@@ -1,0 +1,13 @@
+int test1 = 1;
+if (test1 == 1) {
+    int test2 = 2 + test1;
+    int test3 = test2;
+    if (test2 == 3) {
+        int test4 = 3 + test2;
+        int test5 = test4;
+    }
+    int test6 = test2 + 4;
+}
+int test7 = test1;
+
+exit(test7 + 1);

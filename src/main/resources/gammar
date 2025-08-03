@@ -1,0 +1,7 @@
+PROG    :   (STMT)+ EOF
+STMT    :   (INT|FLOAT) IDENTIFIER = EXPR ;
+        |   IDENTIFIER = EXPR ;
+        |   EXIT(EXPR (, EXPR)*)
+EXPR_P1 : EXPR_P2 (+/- EXPR_P1)*
+EXPR_P2 : (INT_LIT|FLOAT_LIT) (*// EXPR_P1)*
+
