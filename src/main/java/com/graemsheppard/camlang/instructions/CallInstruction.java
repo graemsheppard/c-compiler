@@ -1,18 +1,20 @@
 package com.graemsheppard.camlang.instructions;
 
+import com.graemsheppard.camlang.instructions.operands.LabelOperand;
+import com.graemsheppard.camlang.instructions.operands.Operand;
 import lombok.Getter;
 
-public class LabelInstruction extends Instruction {
+public class CallInstruction extends Instruction {
 
     @Getter
-    private final String name;
+    private final Operand label;
 
-    public LabelInstruction(String name) {
-        this.name = name;
+    public CallInstruction(String label) {
+        this.label = new LabelOperand(label);
     }
 
     @Override
     public String toString() {
-        return name + ":\n";
+        return "\tcall \t" + label + "\n";
     }
 }

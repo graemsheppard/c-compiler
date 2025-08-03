@@ -1,2 +1,18 @@
-package com.graemsheppard.camlang.instructions.operands;public class LabelOperand {
+package com.graemsheppard.camlang.instructions.operands;
+
+import lombok.Getter;
+
+public class LabelOperand extends Operand {
+
+    @Getter
+    private String label;
+
+    public LabelOperand(String label) {
+        this.label = label;
+    }
+
+    @Override
+    public String toString() {
+        return label.toString();
+    }
 }

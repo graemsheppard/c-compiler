@@ -6,10 +6,10 @@ import lombok.Getter;
 public class Token {
 
     @Getter
-    protected TokenType type;
+    private TokenType type;
 
     @Getter
-    public String text;
+    private String text;
 
 
     public Token(TokenType type) {

@@ -4,21 +4,21 @@ import com.graemsheppard.camlang.enums.Register;
 import com.graemsheppard.camlang.instructions.operands.Operand;
 import com.graemsheppard.camlang.instructions.operands.RegisterOperand;
 
-public class SetgeInstruction extends Instruction {
+public class SetneInstruction extends Instruction {
 
     private Operand operand;
 
-    public SetgeInstruction(Operand op) {
+    public SetneInstruction(Operand op) {
         operand = op;
     }
 
-    public SetgeInstruction(Register reg) {
+    public SetneInstruction(Register reg) {
         operand = new RegisterOperand(reg);
     }
 
     @Override
     public String toString() {
-        return "\tsetge \t" + operand.toString();
+        return "\tsetne \t" + operand.toString() + "\n";
     }
 
 }

@@ -1,6 +1,8 @@
 package com.graemsheppard.camlang.instructions;
 
+import com.graemsheppard.camlang.enums.Register;
 import com.graemsheppard.camlang.instructions.operands.Operand;
+import com.graemsheppard.camlang.instructions.operands.RegisterOperand;
 import lombok.Getter;
 
 public class IMulInstruction extends Instruction {
@@ -14,6 +16,11 @@ public class IMulInstruction extends Instruction {
     public IMulInstruction(Operand op1, Operand op2) {
         operand1 = op1;
         operand2 = op2;
+    }
+
+    public IMulInstruction(Register reg1, Register reg2) {
+        operand1 = new RegisterOperand(reg1);
+        operand2 = new RegisterOperand(reg2);
     }
 
     @Override

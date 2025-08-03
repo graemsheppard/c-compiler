@@ -7,12 +7,22 @@ import java.util.List;
 
 public class Tokenizer {
 
+    /**
+     * The text of the input file
+     */
     private final String input;
 
+    /**
+     * @param input The text of the input file
+     */
     public Tokenizer(String input) {
         this.input = input;
     }
 
+    /**
+     * Tokenizes the input
+     * @return a list of Tokens
+     */
     public List<Token> tokenize() {
         int cursor = 0;
         List<Token> tokens = new ArrayList<>(100);

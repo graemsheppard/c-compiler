@@ -8,7 +8,8 @@ public enum Register {
     RDI("rdi"),
     RSI("rsi"),
     R10("r10"),
-    RSP("rsp");
+    RSP("rsp"),
+    AL("al");
 
     @Getter
     private String name;
