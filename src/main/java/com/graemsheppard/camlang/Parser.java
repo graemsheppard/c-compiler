@@ -1,8 +1,9 @@
 package com.graemsheppard.camlang;
 
+import com.graemsheppard.camlang.enums.ControlType;
 import com.graemsheppard.camlang.enums.TokenType;
+import com.graemsheppard.camlang.fragments.IfElseFragment;
 import com.graemsheppard.camlang.nodes.*;
-import lombok.Getter;
 import lombok.NonNull;
 
 import java.util.ArrayList;
@@ -56,20 +57,43 @@ public class Parser {
     public StatementNode parseStatement() {
         StatementNode statementNode;
         Token currentToken = scanToken();
-        if (currentToken.getType() == TokenType.INT && peekToken(0).getType() == TokenType.IDENTIFIER) {
-            // Declaration statement, parse right side as expression
+        if (currentToken.getType() == TokenType.INT && peekToken(0).getType() == TokenType.IDENTIFIER && peekToken(1).getType() == TokenType.OPEN_PARENTHESIS) {
             String id = scanToken().getText();
-            if (scanToken().getType() != TokenType.ASSIGN)
-                throw new RuntimeException("Unexpected token, '=' expected.");
-            statementNode = new DeclarationStatementNode(id, parseExpression_p0());
-            if (scanToken().getType() != TokenType.SEMICOLON)
-                throw new RuntimeException("Unexpected token, ';' expected");
+            scanToken();
+            List<DeclarationStatementNode> params = new ArrayList<>();
+            while(peekToken(0).getType() != TokenType.CLOSE_PARENTHESIS) {
+                params.add(parseDeclaration());
+                if (peekToken(0).getType() != TokenType.COMMA && peekToken(0).getType() != TokenType.CLOSE_PARENTHESIS)
+                    throw new RuntimeException("Unexpected token");
+            }
+            scanToken();
+            if (scanToken().getType() != TokenType.OPEN_BRACE)
+                throw new RuntimeException("'{' expected");
+            List<StatementNode> body = new ArrayList<>();
+            while (peekToken(0).getType() != TokenType.CLOSE_BRACE) {
+                body.add(parseStatement());
+            }
+            statementNode = new FunctionDeclarationStatementNode(id, params, body);
+            scanToken();
         } else if (currentToken.getType() == TokenType.IDENTIFIER && peekToken(0).getType() == TokenType.ASSIGN) {
             // Assignment statement, parse right side as expression
             String id = currentToken.getText();
             scanToken();
             statementNode = new AssignmentStatementNode(id, parseExpression_p0());
             if (scanToken().getType() != TokenType.SEMICOLON)
+                throw new RuntimeException("Unexpected token, ';' expected");
+        } else if (currentToken.getType() == TokenType.INT && peekToken(0).getType() == TokenType.IDENTIFIER) {
+            // Declaration statement, parse right side as expression
+            String id = scanToken().getText();
+            if (peekToken(0).getType() == TokenType.ASSIGN) {
+                scanToken();
+                statementNode = new DeclarationStatementNode(id, parseExpression_p0());
+                if (scanToken().getType() != TokenType.SEMICOLON)
+                    throw new RuntimeException("Unexpected token, ';' expected");
+            }
+            else if (scanToken().getType() == TokenType.SEMICOLON)
+                statementNode = new DeclarationStatementNode(id);
+            else
                 throw new RuntimeException("Unexpected token, ';' expected");
         } else if (currentToken.getType() == TokenType.EXIT && peekToken(0).getType() == TokenType.OPEN_PARENTHESIS) {
             // Exit statement, parse inside parenthesis as expression
@@ -84,21 +108,75 @@ public class Parser {
         } else if (currentToken.getType() == TokenType.IF && peekToken(0).getType() == TokenType.OPEN_PARENTHESIS) {
             // If statement, parse inside parenthesis as expression
             scanToken();
-            statementNode = new IfStatementNode(parseExpression_p0());
+            var ifElseStmt = new IfElseStatementNode();
+            var mainIfFrag = new IfElseFragment(ControlType.IF, parseExpression_p0());
             if (scanToken().getType() != TokenType.CLOSE_PARENTHESIS)
                 throw new RuntimeException("')' expected");
             if (scanToken().getType() != TokenType.OPEN_BRACE)
                 throw new RuntimeException("'{' expected");
             // Parse body of if statement as array of statements
             while (peekToken(0).getType() != TokenType.CLOSE_BRACE) {
-                ((IfStatementNode)statementNode).getStatements().add(parseStatement());
+                mainIfFrag.getBody().add(parseStatement());
             }
+
+            ifElseStmt.getParts().add(mainIfFrag);
             scanToken();
+
+            // Check for else if
+            while(peekToken(0).getType() == TokenType.ELSE && peekToken(1).getType() == TokenType.IF && peekToken(2).getType() == TokenType.OPEN_PARENTHESIS) {
+                scanToken();
+                scanToken();
+                scanToken(); // bruh
+
+                var frag = new IfElseFragment(ControlType.IF_ELSE, parseExpression_p0());
+
+                if (scanToken().getType() != TokenType.CLOSE_PARENTHESIS)
+                    throw new RuntimeException("')' expected");
+                if (scanToken().getType() != TokenType.OPEN_BRACE)
+                    throw new RuntimeException("'{' expected");
+
+                while (peekToken(0).getType() != TokenType.CLOSE_BRACE) {
+                    frag.getBody().add(parseStatement());
+                }
+                ifElseStmt.getParts().add(frag);
+                scanToken();
+            }
+
+            // Check for else
+            if (peekToken(0).getType() == TokenType.ELSE) {
+                scanToken();
+
+                if (scanToken().getType() != TokenType.OPEN_BRACE)
+                    throw new RuntimeException("'{' expected");
+
+                var frag = new IfElseFragment(ControlType.ELSE);
+
+                while (peekToken(0).getType() != TokenType.CLOSE_BRACE) {
+                    frag.getBody().add(parseStatement());
+                }
+                ifElseStmt.getParts().add(frag);
+                scanToken();
+            }
+            statementNode = ifElseStmt;
+
         } else {
             throw new RuntimeException("Invalid statement");
         }
 
         return statementNode;
+    }
+
+    public DeclarationStatementNode parseDeclaration() {
+        scanToken();
+        String id = scanToken().getText();
+        if (peekToken(0).getType() == TokenType.ASSIGN) {
+            scanToken();
+            return new DeclarationStatementNode(id, parseExpression_p0());
+        } else if (peekToken(0).getType() == TokenType.SEMICOLON || peekToken(0).getType() == TokenType.CLOSE_PARENTHESIS || peekToken(0).getType() == TokenType.COMMA) {
+            return new DeclarationStatementNode(id);
+        } else {
+            throw new RuntimeException("Unexpected token");
+        }
     }
 
     /**
@@ -152,6 +230,8 @@ public class Parser {
         // Parse left side as an identifier or a literal
         if (peekToken(0).getType() == TokenType.INTEGER_LITERAL || peekToken(0).getType() == TokenType.FLOAT_LITERAL) {
             expressionNodeA = new ValueExpressionNode(scanToken().getText());
+        } else if (peekToken(0).getType() == TokenType.IDENTIFIER && peekToken(1).getType() == TokenType.OPEN_PARENTHESIS) {
+            expressionNodeA = parseExpression_p3();
         } else if (peekToken(0).getType() == TokenType.IDENTIFIER) {
             expressionNodeA = new IdentifierExpressionNode(scanToken().getText());
         } else {
@@ -179,6 +259,18 @@ public class Parser {
                 return expressionNodeA;
             }
         }
+    }
+
+    public ExpressionNode parseExpression_p3() {
+        FunctionCallExpressionNode node = new FunctionCallExpressionNode(scanToken().getText());
+        scanToken();
+        while (peekToken(0).getType() != TokenType.CLOSE_PARENTHESIS) {
+            node.getParams().add(parseExpression_p0());
+            if (peekToken(0).getType() == TokenType.COMMA)
+                scanToken();
+        }
+        scanToken();
+        return node;
     }
 
     @NonNull

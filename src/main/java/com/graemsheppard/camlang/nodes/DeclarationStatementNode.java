@@ -5,13 +5,18 @@ import lombok.Getter;
 public class DeclarationStatementNode extends StatementNode {
 
     @Getter
-    private String identifier;
+    private final String identifier;
 
     @Getter
-    private ExpressionNode expression;
+    private final ExpressionNode expression;
 
     public DeclarationStatementNode(String id, ExpressionNode expr) {
         identifier = id;
         expression = expr;
+    }
+
+    public DeclarationStatementNode(String id) {
+        identifier = id;
+        expression = null;
     }
 }

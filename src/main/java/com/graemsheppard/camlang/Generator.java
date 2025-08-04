@@ -1,5 +1,6 @@
 package com.graemsheppard.camlang;
 
+import com.graemsheppard.camlang.enums.ControlType;
 import com.graemsheppard.camlang.enums.Register;
 import com.graemsheppard.camlang.enums.TokenType;
 import com.graemsheppard.camlang.instructions.*;
@@ -45,9 +46,9 @@ public class Generator {
     private int stackSize = 0;
 
     /**
-     * Keeps track of the number of branches
+     * Keeps track of the number of ifStatements for branch naming
      */
-    private int branchCount = 0;
+    private int ifStatementCount = 0;
 
     public Generator (ProgramNode programRoot) {
         root = programRoot;
@@ -94,9 +95,15 @@ public class Generator {
         }
 
         // Add all the instructions to the main body
-        for (int i = 0; i < instructions.size() - 1; i++) {
+        for (int i = 0; i < instructions.size(); i++) {
+
             Instruction current = instructions.get(i);
-            Instruction next = instructions.get(i+1);
+            if (i >= instructions.size() - 1) {
+                res.append(current.toString());
+                break;
+            }
+
+            Instruction next = instructions.get(i + 1);
 
             // Remove any PUSH rn that is immediately followed by a POP rn where rn is the register
             if (current instanceof PushInstruction pushInstruction
@@ -149,34 +156,46 @@ public class Generator {
             res.addAll(generateExpression(exitStatementNode.getExpressionNode()));
             res.add(generatePop(Register.R10));
             res.add(new CallInstruction("exit"));
-        } else if (node instanceof IfStatementNode ifStatementNode) {
-            // Create and add the new scope
-            String scopeName = "if_" + branchCount;
-            String branchName = getBranchName();
-            scopes.put(scopeName, new Scope(scopeName, stackSize));
+        } else if (node instanceof IfElseStatementNode ifStatementNode) {
+            List<String> scopeList = ifStatementNode.getScopes(ifStatementCount++);
+            String endLabel = scopeList.get(scopeList.size() - 1);
+            for (int i = 0; i < ifStatementNode.getParts().size(); i++) {
+                var fragment = ifStatementNode.getParts().get(i);
+                var scope = scopeList.get(i);
+                scopes.put(scope, new Scope(scope, stackSize));
+                res.add(new LabelInstruction(scope));
 
-            // Generate the expression within the if statement's ()
-            res.addAll(generateExpression(ifStatementNode.getCondition()));
-            res.add(generatePop(Register.RAX));
-            res.add(new CmpInstruction(Register.RAX, 1));
-            res.add(new JneInstruction(branchName));
+                // Generate the expression within the if statement's ()
+                if (fragment.getType() != ControlType.ELSE) {
+                    res.addAll(generateExpression(fragment.getCondition()));
+                    res.add(generatePop(Register.RAX));
+                    res.add(new TestInstruction(Register.RAX, Register.RAX));
+                    // Jump to next scope if comparison fails
+                    res.add(new JzInstruction(scopeList.get(i + 1)));
+                }
 
-            // Generates the statements within the scope of the if statement
-            for (StatementNode statementNode : ifStatementNode.getStatements()) {
-                res.addAll(generateStatement(statementNode));
+                // Generates the statements within the current scope
+                for (StatementNode statementNode : fragment.getBody()) {
+                    res.addAll(generateStatement(statementNode));
+                }
+
+                // Jump to the end label
+                if (fragment.getType() != ControlType.ELSE) {
+                    res.add(new JmpInstruction(endLabel));
+                }
+
+                // Clean up out-of-scope variables and return SP to previous location
+                for (String variableName : currentScope().getVariables()) {
+                    variables.remove(variableName);
+                }
+
+                int stackOffset = stackSize - currentScope().getStackOffset();
+                stackSize -= stackOffset;
+                if (stackOffset != 0)
+                    res.add( new AddInstruction(Register.RSP, stackOffset * 8));
+                scopes.remove(scopes.lastKey());
             }
-
-            res.add(new LabelInstruction(branchName));
-
-            // Clean up out-of-scope variables and return SP to previous location
-            for (String variableName : currentScope().getVariables()) {
-                variables.remove(variableName);
-            }
-
-            int stackOffset = stackSize - currentScope().getStackOffset();
-            stackSize -= stackOffset;
-            res.add( new AddInstruction(Register.RSP, stackOffset * 8));
-            scopes.remove(scopes.lastKey());
+            res.add(new LabelInstruction(endLabel));
 
         } else if (node instanceof AssignmentStatementNode assignmentStatementNode) {
             // If the variable is out of scope it will have been removed from the map already
@@ -189,6 +208,32 @@ public class Generator {
             int variableLoc = variables.get(assignmentStatementNode.getIdentifier());
             int realOffset = (stackSize - variableLoc) * 8;
             res.add(new MovInstruction(new MemoryOperand(Register.RSP, realOffset), new RegisterOperand(Register.RAX)));
+        } else if (node instanceof FunctionDeclarationStatementNode functionNode) {
+            String scopeName = functionNode.getIdentifier();
+            scopes.put(scopeName, new Scope(scopeName, stackSize));
+            res.add(new JmpInstruction("end_" + scopeName));
+            res.add(new LabelInstruction(scopeName));
+            for (var param : functionNode.getParams()) {
+                res.addAll(generateStatement(param));
+            }
+
+            for (var stmt : functionNode.getBody()) {
+                res.addAll(generateStatement(stmt));
+            }
+
+            // Clean up out-of-scope variables and return SP to previous location
+            for (String variableName : currentScope().getVariables()) {
+                variables.remove(variableName);
+            }
+
+            int stackOffset = stackSize - currentScope().getStackOffset();
+            stackSize -= stackOffset;
+            if (stackOffset != 0)
+                res.add( new AddInstruction(Register.RSP, stackOffset * 8));
+            scopes.remove(scopes.lastKey());
+            res.add(new RetInstruction());
+            res.add(new LabelInstruction("end_" + scopeName));
+
         }
 
         return res;
@@ -246,16 +291,13 @@ public class Generator {
                 default -> throw new RuntimeException("Unknown operator: " + binaryNode.getOperator().getText());
             }
             res.add(generatePush(Register.RAX));
+        } else if (node instanceof FunctionCallExpressionNode functionNode) {
+            for (var param : functionNode.getParams()) {
+                res.addAll(generateExpression(param));
+            }
+            res.add(new CallInstruction(functionNode.getIdentifier()));
         }
         return res;
-    }
-
-    /**
-     * Creates a branch label and increments the branchCount
-     * @return A string representing the branch name
-     */
-    private String getBranchName() {
-        return "br_" + branchCount++;
     }
 
     /**

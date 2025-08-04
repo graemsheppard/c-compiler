@@ -4,8 +4,23 @@ section .data
 section .text
     global _main
 _main:
+	mov 	rax, 	0
+	push 	rax
+if_0:
+	mov 	rax, 	[rsp+0]
+	push 	rax
+	mov 	rax, 	10
+	push 	rax
+	pop 	rbx
+	pop 	rax
+	cmp 	rax, 	rbx
+	setl 	al
+	movzx 	rax, 	al
+	test 	rax, 	rax
+	jz   	endif_0
 	mov 	rax, 	1
 	push 	rax
+if_1:
 	mov 	rax, 	[rsp+0]
 	push 	rax
 	mov 	rax, 	1
@@ -13,64 +28,45 @@ _main:
 	pop 	rbx
 	pop 	rax
 	cmp 	rax, 	rbx
-	sete 	al
+	setne 	al
 	movzx 	rax, 	al
-	cmp 	rax, 	1
-	jne 	br_0
-	mov 	rax, 	2
-	push 	rax
-	mov 	rax, 	[rsp+8]
-	push 	rax
-	pop 	rbx
-	pop 	rax
-	add 	rax, 	rbx
-	push 	rax
-	mov 	rax, 	[rsp+0]
-	push 	rax
-	mov 	rax, 	[rsp+8]
-	push 	rax
-	mov 	rax, 	3
-	push 	rax
-	pop 	rbx
-	pop 	rax
-	cmp 	rax, 	rbx
-	sete 	al
-	movzx 	rax, 	al
-	cmp 	rax, 	1
-	jne 	br_1
-	mov 	rax, 	3
-	push 	rax
-	mov 	rax, 	[rsp+16]
-	push 	rax
-	pop 	rbx
-	pop 	rax
-	add 	rax, 	rbx
-	push 	rax
-	mov 	rax, 	[rsp+0]
-	push 	rax
-br_1:
-	add 	rsp, 	16
-	mov 	rax, 	[rsp+8]
-	push 	rax
-	mov 	rax, 	4
-	push 	rax
-	pop 	rbx
-	pop 	rax
-	add 	rax, 	rbx
-	push 	rax
-br_0:
-	add 	rsp, 	24
-	mov 	rax, 	[rsp+0]
-	push 	rax
-	mov 	rax, 	[rsp+0]
-	push 	rax
+	test 	rax, 	rax
+	jz   	if_1_elif_1
 	mov 	rax, 	1
-	push 	rax
-	pop 	rbx
-	pop 	rax
-	add 	rax, 	rbx
 	push 	rax
 	pop 	r10
+	call 	exit
+	jmp 	endif_1
+if_1_elif_1:
+	mov 	rax, 	[rsp+8]
+	push 	rax
+	mov 	rax, 	0
+	push 	rax
+	pop 	rbx
+	pop 	rax
+	cmp 	rax, 	rbx
+	sete 	al
+	movzx 	rax, 	al
+	test 	rax, 	rax
+	jz   	if_1_else
+	mov 	rax, 	2
+	push 	rax
+	pop 	r10
+	call 	exit
+	jmp 	endif_1
+if_1_else:
+	mov 	rax, 	3
+	push 	rax
+	pop 	r10
+	call 	exit
+endif_1:
+	jmp 	endif_0
+	add 	rsp, 	8
+endif_0:
+	mov 	rax, 	4
+	push 	rax
+	pop 	r10
+	call 	exit
     jmp     exit
 exit:
     mov     rax,    0x02000004
