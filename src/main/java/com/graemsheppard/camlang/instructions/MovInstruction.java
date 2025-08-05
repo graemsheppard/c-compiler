@@ -24,6 +24,11 @@ public class MovInstruction extends Instruction {
         operand2 = new ImmediateOperand(value);
     }
 
+    public MovInstruction(Register dest, Register src) {
+        operand1 = new RegisterOperand(dest);
+        operand2 = new RegisterOperand(src);
+    }
+
     public MovInstruction(Register reg, Operand op2) {
         operand1 = new RegisterOperand(reg);
         operand2 = op2;

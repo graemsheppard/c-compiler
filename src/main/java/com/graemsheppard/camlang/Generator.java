@@ -24,9 +24,9 @@ public class Generator {
     };
 
     /**
-     * Maps a variable name to its stack offset
+     * Maps a variable name to its offset from the frame pointer it was declared in
      */
-    private HashMap<String, Integer> variables;
+    private HashMap<String, VariableLocation> variables;
 
     /**
      * Maps a scope name to its scope, should always contain at least 1 scope "_global_"
@@ -34,16 +34,19 @@ public class Generator {
     private SortedMap<String, Scope> scopes;
 
     /**
+     * The frame pointer offset in bytes
+     */
+    private int framePointer;
+
+    /**
+     * The stack pointer offset in bytes
+     */
+    private int stackPointer;
+
+    /**
      * The root of the AST
      */
     private final ProgramNode root;
-
-    /**
-     * Keeps track of the number of items on the stack,
-     * should not be modified outside of the dedicated methods
-     * generatePop and generatePush
-     */
-    private int stackSize = 0;
 
     /**
      * Keeps track of the number of ifStatements for branch naming
@@ -59,9 +62,11 @@ public class Generator {
      * @return A string representing the compiled program
      */
     public String generate() {
+        framePointer = 0;
+        stackPointer = framePointer;
         variables = new HashMap<>();
         scopes = new TreeMap<>();
-        scopes.put("_global_", new Scope("_global_", 0));
+        scopes.put("_global_", new Scope("_global_", framePointer));
         return generateProgram(this.root);
     }
 
@@ -86,6 +91,7 @@ public class Generator {
             section .text
                 global _main
             _main:
+                mov     rbp,    rsp
             """);
 
         // Body of the main program
@@ -122,7 +128,8 @@ public class Generator {
 
         // Built in subroutines
         res.append("""
-                jmp     exit
+                mov      r10,     0
+                call     exit
             exit:
                 mov     rax,    0x02000004
                 mov     rdi,    1
@@ -150,7 +157,8 @@ public class Generator {
             res.addAll(generateExpression(declarationNode.getExpression()));
 
             // Adds the declared variable to the required maps
-            variables.put(declarationNode.getIdentifier(), stackSize);
+            var locator = new VariableLocation(declarationNode.getIdentifier(), stackPointer - framePointer, currentScope());
+            variables.put(declarationNode.getIdentifier(), locator);
             currentScope().getVariables().add(declarationNode.getIdentifier());
         } else if (node instanceof ExitStatementNode exitStatementNode) {
             res.addAll(generateExpression(exitStatementNode.getExpressionNode()));
@@ -162,9 +170,7 @@ public class Generator {
             for (int i = 0; i < ifStatementNode.getParts().size(); i++) {
                 var fragment = ifStatementNode.getParts().get(i);
                 var scope = scopeList.get(i);
-                scopes.put(scope, new Scope(scope, stackSize));
                 res.add(new LabelInstruction(scope));
-
                 // Generate the expression within the if statement's ()
                 if (fragment.getType() != ControlType.ELSE) {
                     res.addAll(generateExpression(fragment.getCondition()));
@@ -174,10 +180,20 @@ public class Generator {
                     res.add(new JzInstruction(scopeList.get(i + 1)));
                 }
 
+                res.add(generatePush(Register.RBP));
+                res.add(new MovInstruction(Register.RBP, Register.RSP));
+                framePointer = stackPointer;
+                scopes.put(scope, new Scope(scope, framePointer));
+
                 // Generates the statements within the current scope
                 for (StatementNode statementNode : fragment.getBody()) {
                     res.addAll(generateStatement(statementNode));
                 }
+
+                // Return the stack pointer to the start of the frame and pop to get the old frame pointer
+                res.add(new MovInstruction(Register.RSP, Register.RBP));
+                stackPointer = framePointer;
+                res.add(generatePop(Register.RBP));
 
                 // Jump to the end label
                 if (fragment.getType() != ControlType.ELSE) {
@@ -189,11 +205,8 @@ public class Generator {
                     variables.remove(variableName);
                 }
 
-                int stackOffset = stackSize - currentScope().getStackOffset();
-                stackSize -= stackOffset;
-                if (stackOffset != 0)
-                    res.add( new AddInstruction(Register.RSP, stackOffset * 8));
                 scopes.remove(scopes.lastKey());
+                framePointer = currentScope().getFramePointer();
             }
             res.add(new LabelInstruction(endLabel));
 
@@ -205,14 +218,18 @@ public class Generator {
             // Pop the value from the expression and move it onto the stack at the variable's location
             res.addAll(generateExpression(assignmentStatementNode.getExpression()));
             res.add(generatePop(Register.RAX));
-            int variableLoc = variables.get(assignmentStatementNode.getIdentifier());
-            int realOffset = (stackSize - variableLoc) * 8;
-            res.add(new MovInstruction(new MemoryOperand(Register.RSP, realOffset), new RegisterOperand(Register.RAX)));
+            int variableLoc = variables.get(assignmentStatementNode.getIdentifier()).getLocationRelativeTo(framePointer);
+            res.add(new MovInstruction(new MemoryOperand(Register.RBP, variableLoc), new RegisterOperand(Register.RAX)));
         } else if (node instanceof FunctionDeclarationStatementNode functionNode) {
             String scopeName = functionNode.getIdentifier();
-            scopes.put(scopeName, new Scope(scopeName, stackSize));
             res.add(new JmpInstruction("end_" + scopeName));
             res.add(new LabelInstruction(scopeName));
+
+            res.add(generatePush(Register.RBP));
+            res.add(new MovInstruction(Register.RBP, Register.RSP));
+            framePointer = stackPointer;
+            scopes.put(scopeName, new Scope(scopeName, framePointer));
+
             for (var param : functionNode.getParams()) {
                 res.addAll(generateStatement(param));
             }
@@ -221,16 +238,22 @@ public class Generator {
                 res.addAll(generateStatement(stmt));
             }
 
+            // Return the stack pointer to the start of the frame and pop to get the old frame pointer
+            res.add(new MovInstruction(Register.RSP, Register.RBP));
+            stackPointer = framePointer;
+            res.add(generatePop(Register.RBP));
+
             // Clean up out-of-scope variables and return SP to previous location
             for (String variableName : currentScope().getVariables()) {
                 variables.remove(variableName);
             }
 
-            int stackOffset = stackSize - currentScope().getStackOffset();
-            stackSize -= stackOffset;
-            if (stackOffset != 0)
-                res.add( new AddInstruction(Register.RSP, stackOffset * 8));
+//            int stackOffset = stackSize - currentScope().getStackOffset();
+//            stackSize -= stackOffset;
+//            if (stackOffset != 0)
+//                res.add( new AddInstruction(Register.RSP, stackOffset * 8));
             scopes.remove(scopes.lastKey());
+            framePointer = currentScope().getFramePointer();
             res.add(new RetInstruction());
             res.add(new LabelInstruction("end_" + scopeName));
 
@@ -255,9 +278,8 @@ public class Generator {
                 throw new RuntimeException("Variable used before it was declared: " + identifierNode.getIdentifier());
 
             // Gets the variable based on the offset and pushes it onto the stack
-            int variableLoc = variables.get(identifierNode.getIdentifier());
-            int realOffset = (stackSize - variableLoc) * 8;
-            res.add(new MovInstruction(Register.RAX, new MemoryOperand(Register.RSP, realOffset)));
+            int variableLoc = variables.get(identifierNode.getIdentifier()).getLocationRelativeTo(framePointer);
+            res.add(new MovInstruction(Register.RAX, new MemoryOperand(Register.RBP, variableLoc)));
             res.add(generatePush(Register.RAX));
         } else if (node instanceof BinaryExpressionNode binaryNode) {
 
@@ -306,7 +328,7 @@ public class Generator {
      * @return the PushInstruction
      */
     private PushInstruction generatePush(Register register) {
-        stackSize++;
+        stackPointer -= 8;
         return new PushInstruction(new RegisterOperand(register));
     }
 
@@ -316,7 +338,7 @@ public class Generator {
      * @return the PopInstruction
      */
     private PopInstruction generatePop(Register register) {
-        stackSize--;
+        stackPointer += 8;
         return new PopInstruction(new RegisterOperand(register));
     }
 

@@ -4,24 +4,32 @@ section .data
 section .text
     global _main
 _main:
-	jmp 	end_test1
-test1:
-	mov 	rax, 	[rsp+0]
-	push 	rax
-	pop 	r10
-	call 	exit
-	ret
-end_test1:
+    mov     rbp,    rsp
 	mov 	rax, 	1
 	push 	rax
-	mov 	rax, 	2
+	jmp 	end_test
+test:
+	push 	rbp
+	mov 	rbp, 	rsp
+	mov 	rax, 	[rbp+8]
+	push 	rax
+	mov 	rax, 	[rbp+0]
 	push 	rax
 	pop 	rbx
 	pop 	rax
 	add 	rax, 	rbx
 	push 	rax
-	call 	test1
-    jmp     exit
+	pop 	r10
+	call 	exit
+	mov 	rsp, 	rbp
+	pop 	rbp
+	ret
+end_test:
+	mov 	rax, 	1
+	push 	rax
+	call 	test
+    mov      r10,     0
+    call     exit
 exit:
     mov     rax,    0x02000004
     mov     rdi,    1

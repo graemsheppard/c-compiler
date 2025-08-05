@@ -9,6 +9,7 @@ public enum Register {
     RSI("rsi"),
     R10("r10"),
     RSP("rsp"),
+    RBP("rbp"),
     AL("al");
 
     @Getter

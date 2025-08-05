@@ -11,14 +11,14 @@ public class Scope {
     private final String name;
 
     @Getter
-    private final int stackOffset;
-
-    @Getter
     private final List<String> variables;
 
-    public Scope (String scopeName, int sp) {
+    @Getter
+    private int framePointer;
+
+    public Scope (String scopeName, int rbp) {
         name = scopeName;
-        stackOffset = sp;
         variables = new ArrayList<>();
+        framePointer = rbp;
     }
 }
