@@ -24,7 +24,7 @@ dependencies {
 }
 
 application {
-    mainClass.set('com.graemsheppard.camlang.Main')
+    mainClass.set('com.graemsheppard.clang.Main')
 }
 
 test {

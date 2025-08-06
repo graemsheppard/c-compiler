@@ -5,7 +5,7 @@ section .text
     global _main
 _main:
     mov     rbp,    rsp
-	mov 	rax, 	69
+	mov 	rax, 	30
 	push 	rax
 	jmp 	end_test
 test:

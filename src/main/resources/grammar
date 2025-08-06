@@ -1,0 +1,12 @@
+#Somewhat describes the grammar implemented so far
+
+PROG    :   (STMT)+ EOF
+STMT    :   (INT|FLOAT) IDENTIFIER = EXPR ;
+        |   IDENTIFIER = EXPR ;
+        |   EXIT(EXPR (, EXPR)*)
+        |   IF(EXPR) { STMT* } (ELSE IF(EXPR) { STMT* })* (ELSE { STMT* })(0|1)
+        |   IDENTIFIER ((INT|FLOAT) IDENTIFIER (, (INT|FLOAT) IDENTIFIER)*) { STMT* }
+EXPR_P0 : EXPR_P1 (=|>|<|!)(1)(=)?
+EXPR_P1 : EXPR_P2 (+/- EXPR_P1)*
+EXPR_P2 : (INT_LIT|FLOAT_LIT) (*// EXPR_P1)*
+
