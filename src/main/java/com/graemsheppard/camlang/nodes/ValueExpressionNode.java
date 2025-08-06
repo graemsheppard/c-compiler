@@ -13,4 +13,8 @@ public class ValueExpressionNode extends ExpressionNode {
     public ValueExpressionNode(String val) {
         value = val;
     }
+
+    public ValueExpressionNode(int val) {
+        value = String.valueOf(val);
+    }
 }

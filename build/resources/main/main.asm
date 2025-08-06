@@ -5,15 +5,15 @@ section .text
     global _main
 _main:
     mov     rbp,    rsp
-	mov 	rax, 	1
+	mov 	rax, 	69
 	push 	rax
 	jmp 	end_test
 test:
-	push 	rbp
-	mov 	rbp, 	rsp
-	mov 	rax, 	[rbp+8]
+	mov 	rax, 	0
 	push 	rax
-	mov 	rax, 	[rbp+0]
+	mov 	rax, 	[rbp+16]
+	push 	rax
+	mov 	rax, 	[rbp+8]
 	push 	rax
 	pop 	rbx
 	pop 	rax
@@ -25,6 +25,8 @@ test:
 	pop 	rbp
 	ret
 end_test:
+	push 	rbp
+	mov 	rbp, 	rsp
 	mov 	rax, 	1
 	push 	rax
 	call 	test

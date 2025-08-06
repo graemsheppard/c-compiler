@@ -225,8 +225,7 @@ public class Generator {
             res.add(new JmpInstruction("end_" + scopeName));
             res.add(new LabelInstruction(scopeName));
 
-            res.add(generatePush(Register.RBP));
-            res.add(new MovInstruction(Register.RBP, Register.RSP));
+            stackPointer -= 8; // since we push the frame pointer later on
             framePointer = stackPointer;
             scopes.put(scopeName, new Scope(scopeName, framePointer));
 
@@ -248,10 +247,6 @@ public class Generator {
                 variables.remove(variableName);
             }
 
-//            int stackOffset = stackSize - currentScope().getStackOffset();
-//            stackSize -= stackOffset;
-//            if (stackOffset != 0)
-//                res.add( new AddInstruction(Register.RSP, stackOffset * 8));
             scopes.remove(scopes.lastKey());
             framePointer = currentScope().getFramePointer();
             res.add(new RetInstruction());
@@ -314,6 +309,8 @@ public class Generator {
             }
             res.add(generatePush(Register.RAX));
         } else if (node instanceof FunctionCallExpressionNode functionNode) {
+            res.add(generatePush(Register.RBP));
+            res.add(new MovInstruction(Register.RBP, Register.RSP));
             for (var param : functionNode.getParams()) {
                 res.addAll(generateExpression(param));
             }

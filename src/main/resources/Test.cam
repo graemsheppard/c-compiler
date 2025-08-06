@@ -1,5 +1,5 @@
-int testVar = 1;
+int testVar = 69;
 int test(int i) {
-    exit(testVar);
+    exit(testVar + i);
 }
 int k = test(1);

@@ -17,6 +17,6 @@ public class DeclarationStatementNode extends StatementNode {
 
     public DeclarationStatementNode(String id) {
         identifier = id;
-        expression = null;
+        expression = new ValueExpressionNode(0);
     }
 }
