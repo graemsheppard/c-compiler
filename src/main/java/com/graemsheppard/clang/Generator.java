@@ -224,31 +224,23 @@ public class Generator {
             String scopeName = functionNode.getIdentifier();
             res.add(new JmpInstruction("end_" + scopeName));
             res.add(new LabelInstruction(scopeName));
+            res.addAll(createStackFrame(scopeName, functionNode.getParams().size()));
 
-            stackPointer -= 8; // since we push the frame pointer later on
-            framePointer = stackPointer;
-            scopes.put(scopeName, new Scope(scopeName, framePointer));
-
+            // Allocate space for params and increment stack size, assuming caller will provide the correct args
+            // The extra 8 bytes is to account for the return address which is pushed on call
+            int argOffset = 8 * functionNode.getParams().size() + 8;
             for (var param : functionNode.getParams()) {
-                res.addAll(generateStatement(param));
+                currentScope().getVariables().add(param.getIdentifier());
+                var varLoc = new VariableLocation(param.getIdentifier(), argOffset, currentScope());
+                variables.put(param.getIdentifier(), varLoc);
+                argOffset -= 8;
             }
 
             for (var stmt : functionNode.getBody()) {
                 res.addAll(generateStatement(stmt));
             }
 
-            // Return the stack pointer to the start of the frame and pop to get the old frame pointer
-            res.add(new MovInstruction(Register.RSP, Register.RBP));
-            stackPointer = framePointer;
-            res.add(generatePop(Register.RBP));
-
-            // Clean up out-of-scope variables and return SP to previous location
-            for (String variableName : currentScope().getVariables()) {
-                variables.remove(variableName);
-            }
-
-            scopes.remove(scopes.lastKey());
-            framePointer = currentScope().getFramePointer();
+            res.addAll(destroyStackFrame());
             res.add(new RetInstruction());
             res.add(new LabelInstruction("end_" + scopeName));
 
@@ -309,12 +301,13 @@ public class Generator {
             }
             res.add(generatePush(Register.RAX));
         } else if (node instanceof FunctionCallExpressionNode functionNode) {
-            res.add(generatePush(Register.RBP));
-            res.add(new MovInstruction(Register.RBP, Register.RSP));
             for (var param : functionNode.getParams()) {
                 res.addAll(generateExpression(param));
             }
             res.add(new CallInstruction(functionNode.getIdentifier()));
+            for (var param : functionNode.getParams()) {
+                res.add(generatePop(Register.RAX));
+            }
         }
         return res;
     }
@@ -339,12 +332,45 @@ public class Generator {
         return new PopInstruction(new RegisterOperand(register));
     }
 
+    private List<Instruction> createStackFrame(String scopeName, int numParams) {
+        List<Instruction> res = new ArrayList<>(2);
+        res.add(generatePush(Register.RBP));
+        res.add(new MovInstruction(Register.RBP, Register.RSP));
+        stackPointer -= 8 * numParams + 8;
+        framePointer = stackPointer;
+        scopes.put(scopeName, new Scope(scopeName, framePointer));
+
+        return res;
+    }
+
+    private List<Instruction> destroyStackFrame() {
+        List<Instruction> res = new ArrayList<>(2);
+        stackPointer = framePointer;
+
+        res.add(new MovInstruction(Register.RSP, Register.RBP));
+        res.add(generatePop(Register.RBP));
+
+        for (String variable : currentScope().getVariables())
+            variables.remove(variable);
+        scopes.remove(scopes.lastKey());
+        framePointer = currentScope().getFramePointer();
+
+        return res;
+    }
+
+
     /**
      * Gets the current scope from scopes
      * @return the Current scope
      */
     private Scope currentScope() {
         return scopes.get(scopes.lastKey());
+    }
+
+    private Scope containingScope() {
+        var keys = scopes.keySet().stream().toList();
+        int numKeys = keys.size();
+        return scopes.get(keys.size() > 1 ? keys.get(numKeys - 2) : keys.get(0));
     }
 
 

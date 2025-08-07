@@ -63,6 +63,12 @@ public class Tokenizer {
                 cursor++;
                 continue;
             }
+
+            if (current == ',') {
+                tokens.add(new Token(TokenType.COMMA));
+                cursor++;
+                continue;
+            }
             //</editor-fold>
 
             //<editor-fold desc="Operators">

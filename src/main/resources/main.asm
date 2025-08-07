@@ -7,13 +7,25 @@ _main:
     mov     rbp,    rsp
 	mov 	rax, 	30
 	push 	rax
-	jmp 	end_test
-test:
-	mov 	rax, 	0
+	jmp 	end_func1
+func1:
+	push 	rbp
+	mov 	rbp, 	rsp
+	mov 	rax, 	3
 	push 	rax
-	mov 	rax, 	[rbp+8]
+	jmp 	end_func2
+func2:
+	push 	rbp
+	mov 	rbp, 	rsp
+	mov 	rax, 	[rbp+24]
 	push 	rax
-	mov 	rax, 	[rbp-8]
+	mov 	rax, 	[rbp+16]
+	push 	rax
+	pop 	rbx
+	pop 	rax
+	add 	rax, 	rbx
+	push 	rax
+	mov 	rax, 	[rbp+32]
 	push 	rax
 	pop 	rbx
 	pop 	rax
@@ -24,12 +36,25 @@ test:
 	mov 	rsp, 	rbp
 	pop 	rbp
 	ret
-end_test:
-	push 	rbp
-	mov 	rbp, 	rsp
-	mov 	rax, 	1
+end_func2:
+	mov 	rax, 	[rbp+24]
 	push 	rax
-	call 	test
+	mov 	rax, 	[rbp+16]
+	push 	rax
+	call 	func2
+	pop 	rax
+	pop 	rax
+	mov 	rsp, 	rbp
+	pop 	rbp
+	ret
+end_func1:
+	mov 	rax, 	12
+	push 	rax
+	mov 	rax, 	22
+	push 	rax
+	call 	func1
+	pop 	rax
+	pop 	rax
     mov      r10,     0
     call     exit
 exit:

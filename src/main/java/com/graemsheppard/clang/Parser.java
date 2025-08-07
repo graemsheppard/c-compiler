@@ -65,6 +65,8 @@ public class Parser {
                 params.add(parseDeclaration());
                 if (peekToken(0).getType() != TokenType.COMMA && peekToken(0).getType() != TokenType.CLOSE_PARENTHESIS)
                     throw new RuntimeException("Unexpected token");
+                if (peekToken(0).getType() == TokenType.COMMA)
+                    scanToken();
             }
             scanToken();
             if (scanToken().getType() != TokenType.OPEN_BRACE)

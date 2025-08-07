@@ -1,5 +1,11 @@
 int testVar = 30;
-int test(int i) {
-    exit(testVar + i);
+
+int func1(int i, int j) {
+    int h = 3;
+    int func2(int k, int l) {
+        exit(k + l + h);
+    }
+    int k = func2(i, j);
 }
-int k = test(1);
+
+int m = func1(12, 22);
