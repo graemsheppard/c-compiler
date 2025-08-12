@@ -184,6 +184,8 @@ public class Tokenizer {
                     tokens.add(new Token(TokenType.IF));
                 } else if (tokenString.equals(TokenType.ELSE.getText())) {
                     tokens.add(new Token(TokenType.ELSE));
+                } else if (tokenString.equals(TokenType.RETURN.getText())) {
+                    tokens.add(new Token(TokenType.RETURN));
                 } else {
                     tokens.add(new Token(TokenType.IDENTIFIER, tokenString));
                 }

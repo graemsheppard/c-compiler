@@ -1,5 +1,6 @@
 package com.graemsheppard.clang.instructions;
 
+import com.graemsheppard.clang.instructions.operands.ImmediateOperand;
 import com.graemsheppard.clang.instructions.operands.Operand;
 import lombok.Getter;
 
@@ -10,6 +11,10 @@ public class PushInstruction extends Instruction {
 
     public PushInstruction(Operand op) {
         operand = op;
+    }
+
+    public PushInstruction(int value) {
+        operand = new ImmediateOperand(value);
     }
 
     @Override

@@ -1,6 +1,7 @@
 package com.graemsheppard.clang.instructions;
 
 import com.graemsheppard.clang.enums.Register;
+import com.graemsheppard.clang.instructions.operands.ImmediateOperand;
 import com.graemsheppard.clang.instructions.operands.Operand;
 import com.graemsheppard.clang.instructions.operands.RegisterOperand;
 import lombok.Getter;
@@ -21,6 +22,11 @@ public class SubInstruction extends Instruction {
     public SubInstruction(Register reg1, Register reg2) {
         operand1 = new RegisterOperand(reg1);
         operand2 = new RegisterOperand(reg2);
+    }
+
+    public SubInstruction(Register reg1, int value) {
+        operand1 = new RegisterOperand(reg1);
+        operand2 = new ImmediateOperand(value);
     }
 
     @Override

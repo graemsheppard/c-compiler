@@ -11,6 +11,10 @@ public class ImmediateOperand extends Operand {
         this.value = value;
     }
 
+    public ImmediateOperand(int value) {
+        this.value = String.valueOf(value);
+    }
+
     @Override
     public String toString() {
         return value;

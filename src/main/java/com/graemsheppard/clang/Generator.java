@@ -20,7 +20,17 @@ public class Generator {
      * Strings that are needed by the compiler
      */
     private static final String[] BUILT_IN_STRINGS = {
-            "Program exited with code"
+            "Program exited with code: "
+    };
+
+    /**
+     * Names of native functions, they should follow have a corresponding file
+     * in resources/nativeFunctions
+     */
+    private static final String[] NATIVE_FUNCTIONS = {
+        "exit",
+        "itoa",
+        "print"
     };
 
     /**
@@ -126,22 +136,14 @@ public class Generator {
             res.append(current.toString());
         }
 
+        // Push 0 because the program proceeds into exit section
+        res.append(new PushInstruction(0));
+
         // Built in subroutines
-        res.append("""
-                mov      r10,     0
-                call     exit
-            exit:
-                mov     rax,    0x02000004
-                mov     rdi,    1
-                lea     rsi,    [str_0]
-            """);
-        res.append("\tmov \trdx, \t").append(BUILT_IN_STRINGS[0].length() + 1).append("\n");
-        res.append("""
-                syscall
-                mov     rax,    0x02000001
-                mov     rdi,    r10
-                syscall
-            """);
+        Arrays.stream(NATIVE_FUNCTIONS)
+                .map(NativeFunction::new)
+                .map(NativeFunction::toString)
+                .forEach(res::append);
         return res.toString();
     }
 
@@ -162,7 +164,6 @@ public class Generator {
             currentScope().getVariables().add(declarationNode.getIdentifier());
         } else if (node instanceof ExitStatementNode exitStatementNode) {
             res.addAll(generateExpression(exitStatementNode.getExpressionNode()));
-            res.add(generatePop(Register.R10));
             res.add(new CallInstruction("exit"));
         } else if (node instanceof IfElseStatementNode ifStatementNode) {
             List<String> scopeList = ifStatementNode.getScopes(ifStatementCount++);
@@ -220,6 +221,9 @@ public class Generator {
             res.add(generatePop(Register.RAX));
             int variableLoc = variables.get(assignmentStatementNode.getIdentifier()).getLocationRelativeTo(framePointer);
             res.add(new MovInstruction(new MemoryOperand(Register.RBP, variableLoc), new RegisterOperand(Register.RAX)));
+        } else if(node instanceof ReturnStatementNode returnNode) {
+            res.addAll(generateExpression(returnNode.getExpression()));
+            res.add(generatePop(Register.RAX));
         } else if (node instanceof FunctionDeclarationStatementNode functionNode) {
             String scopeName = functionNode.getIdentifier();
             res.add(new JmpInstruction("end_" + scopeName));
@@ -240,7 +244,7 @@ public class Generator {
                 res.addAll(generateStatement(stmt));
             }
 
-            res.addAll(destroyStackFrame());
+            res.addAll(destroyStackFrame(functionNode.getParams().size()));
             res.add(new RetInstruction());
             res.add(new LabelInstruction("end_" + scopeName));
 
@@ -304,10 +308,12 @@ public class Generator {
             for (var param : functionNode.getParams()) {
                 res.addAll(generateExpression(param));
             }
+
+            int numParams = functionNode.getParams().size();
             res.add(new CallInstruction(functionNode.getIdentifier()));
-            for (var param : functionNode.getParams()) {
-                res.add(generatePop(Register.RAX));
-            }
+            res.add(new AddInstruction(Register.RSP, numParams * 8));
+            stackPointer += numParams * 8;
+            res.add(generatePush(Register.RAX));
         }
         return res;
     }
@@ -343,9 +349,10 @@ public class Generator {
         return res;
     }
 
-    private List<Instruction> destroyStackFrame() {
+    private List<Instruction> destroyStackFrame(int numParams) {
         List<Instruction> res = new ArrayList<>(2);
         stackPointer = framePointer;
+        stackPointer += 8 * numParams + 8;
 
         res.add(new MovInstruction(Register.RSP, Register.RBP));
         res.add(generatePop(Register.RBP));

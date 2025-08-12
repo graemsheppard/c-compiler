@@ -7,7 +7,7 @@ public enum TokenType {
     WHILE("while"),
     FOR("for"),
     FUNCTION,
-    RETURN,
+    RETURN("return"),
     EXIT("exit"),
 
     // Data types

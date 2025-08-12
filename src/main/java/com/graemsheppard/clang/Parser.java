@@ -84,6 +84,10 @@ public class Parser {
             statementNode = new AssignmentStatementNode(id, parseExpression_p0());
             if (scanToken().getType() != TokenType.SEMICOLON)
                 throw new RuntimeException("Unexpected token, ';' expected");
+        } else if (currentToken.getType() == TokenType.RETURN) {
+            statementNode = new ReturnStatementNode(parseExpression_p0());
+            if (scanToken().getType() != TokenType.SEMICOLON)
+                throw new RuntimeException("Unexpected token, ';' expected");
         } else if (currentToken.getType() == TokenType.INT && peekToken(0).getType() == TokenType.IDENTIFIER) {
             // Declaration statement, parse right side as expression
             String id = scanToken().getText();
