@@ -1,59 +1,29 @@
     default rel
 section .data
-	str_0: 	db "Program exited with code: ", 	10
+	str_0: 	db 'Program exited with code: ', 	10
 section .text
     global _main
 _main:
+    push    0
     mov     rbp,    rsp
-	mov 	rax, 	1
+	mov 	rax, 	rbp
 	push 	rax
-	jmp 	end_func1
-func1:
-	push 	rbp
-	mov 	rbp, 	rsp
-	mov 	rax, 	[rbp+24]
+	mov 	rax, 	0xaa
 	push 	rax
-	mov 	rax, 	[rbp+16]
+	mov 	rax, 	[rbp-8]
 	push 	rax
-	pop 	rbx
-	pop 	rax
-	add 	rax, 	rbx
-	mov 	rsp, 	rbp
-	pop 	rbp
-	ret
-end_func1:
-	jmp 	end_func2
-func2:
-	push 	rbp
-	mov 	rbp, 	rsp
-	mov 	rax, 	[rbp+24]
-	push 	rax
-	mov 	rax, 	[rbp+16]
-	push 	rax
-	pop 	rbx
-	pop 	rax
-	imul 	rax, 	rbx
-	mov 	rsp, 	rbp
-	pop 	rbp
-	ret
-end_func2:
-	mov 	rax, 	2
-	push 	rax
-	mov 	rax, 	2
-	push 	rax
-	mov 	rax, 	4
-	push 	rax
-	call 	func2
+	call 	itoa
 	add 	rsp, 	16
 	push 	rax
-	call 	func1
-	add 	rsp, 	16
+	mov 	rax, 	[rbp-8]
+	mov 	rax, 	[rax]
 	push 	rax
 	call 	exit
 	push 	0
-exit:
+exit:   ; exit(int code)
     push    rbp
     mov     rbp,    rsp
+    push    0                       ; allocate return address for string length
     lea     rax,    [str_0]
     push    rax
     push    26
@@ -61,19 +31,22 @@ exit:
     add     rsp,    16
 	mov		rax,	[rbp+16]		; retrieve parameter value
 	push    rax
-	call	itoa					; get string pointer in rax and size in rdx
-	add     rsp,    8
+	lea     rax,    [rbp-8]
 	push    rax
-	push    rdx
+	call	itoa					; get string pointer in rax and size in rdx
+	add     rsp,    16
+	push    rax
+	mov     rax,    [rbp-8]
+	push    rax
 	call    print
 	add     rsp,    16
     mov     rax,    0x02000001
     mov     rdi,    [rbp+16]
     syscall
-itoa:
+itoa:   ; itoa(int val, int* len)
     push    rbp
     mov     rbp,    rsp
-	mov		r8,		[rbp+16]
+	mov		r8,		[rbp+24]
 	sub		rsp,	20				; make room for buffer
 	mov 	rcx,	1 				; divisor
 	mov		r11,	0				; string length
@@ -131,11 +104,12 @@ itoa_h_return:
 	mov 	rsi,	rsp				; source address
 	add		rsi,	1
 	rep		movsb
-	mov		rdx,	r11
+	mov     rsi,    [rbp+16]
+	mov		[rsi],  r11           ; set the 2nd param to length
 	mov     rsp,    rbp
 	pop		rbp
 	ret
-print:
+print: ; print(void* str, int length)
     push    rbp
     mov     rbp,    rsp
     mov     rax,    0x02000004

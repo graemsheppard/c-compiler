@@ -2,5 +2,5 @@
 .gradle
 /build/
 .DS_Store
-resources/main.o
-ressources/main
+src/main/resources/main.o
+src/main/resources/main

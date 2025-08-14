@@ -1,4 +1,4 @@
-print:
+print: ; print(void* str, int length)
     push    rbp
     mov     rbp,    rsp
     mov     rax,    0x02000004

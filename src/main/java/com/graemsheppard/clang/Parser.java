@@ -101,6 +101,19 @@ public class Parser {
                 statementNode = new DeclarationStatementNode(id);
             else
                 throw new RuntimeException("Unexpected token, ';' expected");
+        } else if(currentToken.getType() == TokenType.INT && peekToken(0).getType() == TokenType.STAR && peekToken(1).getType() == TokenType.IDENTIFIER) {
+            scanToken();
+            String id = scanToken().getText();
+            if (peekToken(0).getType() == TokenType.ASSIGN) {
+                scanToken();
+                statementNode = new DeclarationStatementNode(id, parseExpression_p0(), true);
+                if (scanToken().getType() != TokenType.SEMICOLON)
+                    throw new RuntimeException("Unexpected token, ';' expected");
+            }
+            else if (scanToken().getType() == TokenType.SEMICOLON)
+                statementNode = new DeclarationStatementNode(id, true);
+            else
+                throw new RuntimeException("Unexpected token, ';' expected");
         } else if (currentToken.getType() == TokenType.EXIT && peekToken(0).getType() == TokenType.OPEN_PARENTHESIS) {
             // Exit statement, parse inside parenthesis as expression
             scanToken();
@@ -232,30 +245,34 @@ public class Parser {
      * @return an ExpressionNode
      */
     public ExpressionNode parseExpression_p2() {
-        ExpressionNode expressionNodeA;
+        ExpressionNode expressionNodeA = parseExpression_p3();
         // Parse left side as an identifier or a literal
-        if (peekToken(0).getType() == TokenType.INTEGER_LITERAL || peekToken(0).getType() == TokenType.FLOAT_LITERAL) {
-            expressionNodeA = new ValueExpressionNode(scanToken().getText());
-        } else if (peekToken(0).getType() == TokenType.IDENTIFIER && peekToken(1).getType() == TokenType.OPEN_PARENTHESIS) {
-            expressionNodeA = parseExpression_p3();
-        } else if (peekToken(0).getType() == TokenType.IDENTIFIER) {
-            expressionNodeA = new IdentifierExpressionNode(scanToken().getText());
-        } else {
-            throw new RuntimeException("Expected literal or identifier type");
-        }
+//        if (peekToken(0).getType() == TokenType.INTEGER_LITERAL) {
+//            expressionNodeA = new ValueExpressionNode(Integer.parseInt(scanToken().getText()));
+//        } else if (peekToken(0).getType() == TokenType.FLOAT_LITERAL) {
+//            expressionNodeA = new ValueExpressionNode(Float.parseFloat(scanToken().getText()));
+//        } else if (peekToken(0).getType() == TokenType.IDENTIFIER && peekToken(1).getType() == TokenType.OPEN_PARENTHESIS) {
+//            expressionNodeA = parseExpression_p4();
+//        } else if (peekToken(0).getType() == TokenType.IDENTIFIER) {
+//            expressionNodeA = new IdentifierExpressionNode(scanToken().getText());
+//        } else {
+//            throw new RuntimeException("Expected literal or identifier type");
+//        }
         while(true) {
-            if (peekToken(0).getType() == TokenType.MULTIPLY || peekToken(0).getType() == TokenType.DIVIDE) {
+            if (peekToken(0).getType() == TokenType.STAR || peekToken(0).getType() == TokenType.FSLASH) {
                 TokenType operator = scanToken().getType();
-                ExpressionNode expressionNodeB;
+                ExpressionNode expressionNodeB = parseExpression_p3();
 
                 // Parse the right side as a value or identifier
-                if (peekToken(0).getType() == TokenType.INTEGER_LITERAL || peekToken(0).getType() == TokenType.FLOAT_LITERAL) {
-                    expressionNodeB = new ValueExpressionNode(scanToken().getText());
-                } else if (peekToken(0).getType() == TokenType.IDENTIFIER) {
-                    expressionNodeB = new IdentifierExpressionNode(scanToken().getText());
-                } else {
-                    throw new RuntimeException("Expected literal or identifier type");
-                }
+//                if (peekToken(0).getType() == TokenType.INTEGER_LITERAL) {
+//                    expressionNodeB = new ValueExpressionNode(Integer.getInteger(scanToken().getText()));
+//                } else if (peekToken(0).getType() == TokenType.FLOAT_LITERAL) {
+//                    expressionNodeB = new ValueExpressionNode(Float.parseFloat(scanToken().getText()));
+//                }  else if (peekToken(0).getType() == TokenType.IDENTIFIER) {
+//                    expressionNodeB = new IdentifierExpressionNode(scanToken().getText());
+//                } else {
+//                    throw new RuntimeException("Expected literal or identifier type");
+//                }
 
                 // Create expression node with both the left and right sides
                 expressionNodeA = new BinaryExpressionNode(expressionNodeA, expressionNodeB);
@@ -268,15 +285,45 @@ public class Parser {
     }
 
     public ExpressionNode parseExpression_p3() {
-        FunctionCallExpressionNode node = new FunctionCallExpressionNode(scanToken().getText());
-        scanToken();
-        while (peekToken(0).getType() != TokenType.CLOSE_PARENTHESIS) {
-            node.getParams().add(parseExpression_p0());
-            if (peekToken(0).getType() == TokenType.COMMA)
-                scanToken();
+        if (peekToken(0).getType() == TokenType.STAR) {
+            scanToken();
+            return new DereferenceExpressionNode(parseExpression_p4());
+        } else {
+            return parseExpression_p4();
         }
-        scanToken();
+    }
+
+    public ExpressionNode parseExpression_p4() {
+        ExpressionNode node;
+        if (peekToken(0).getType() == TokenType.IDENTIFIER && peekToken(1).getType() == TokenType.OPEN_PARENTHESIS) {
+            FunctionCallExpressionNode functionNode = new FunctionCallExpressionNode(scanToken().getText());
+            scanToken();
+            while (peekToken(0).getType() != TokenType.CLOSE_PARENTHESIS) {
+                functionNode.getParams().add(parseExpression_p0());
+                if (peekToken(0).getType() == TokenType.COMMA)
+                    scanToken();
+            }
+            scanToken();
+            node = functionNode;
+        } else {
+            node = parseTerm();
+        }
         return node;
+    }
+
+    public ExpressionNode parseTerm() {
+        ExpressionNode term;
+        if (peekToken(0).getType() == TokenType.INTEGER_LITERAL) {
+            term = new ValueExpressionNode(Integer.parseInt(scanToken().getText()));
+        } else if (peekToken(0).getType() == TokenType.FLOAT_LITERAL) {
+            term = new ValueExpressionNode(Float.parseFloat(scanToken().getText()));
+        } else if (peekToken(0).getType() == TokenType.IDENTIFIER) {
+            term = new IdentifierExpressionNode(scanToken().getText());
+        } else {
+            throw new RuntimeException("Expected literal or identifier type");
+        }
+        return term;
+
     }
 
     @NonNull

@@ -1,7 +1,7 @@
-itoa:
+itoa:   ; itoa(int val, int* len)
     push    rbp
     mov     rbp,    rsp
-	mov		r8,		[rbp+16]
+	mov		r8,		[rbp+24]
 	sub		rsp,	20				; make room for buffer
 	mov 	rcx,	1 				; divisor
 	mov		r11,	0				; string length
@@ -59,7 +59,8 @@ itoa_h_return:
 	mov 	rsi,	rsp				; source address
 	add		rsi,	1
 	rep		movsb
-	mov		rdx,	r11
+	mov     rsi,    [rbp+16]
+	mov		[rsi],  r11           ; set the 2nd param to length
 	mov     rsp,    rbp
 	pop		rbp
 	ret

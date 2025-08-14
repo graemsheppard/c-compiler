@@ -94,7 +94,7 @@ public class Generator {
             section .data
             """);
         for (int i = 0; i < BUILT_IN_STRINGS.length; i++) {
-            res.append("\tstr_").append(i).append(": \tdb \"").append(BUILT_IN_STRINGS[i]).append("\", \t10\n");
+            res.append("\tstr_").append(i).append(": \tdb '").append(BUILT_IN_STRINGS[i]).append("', \t10\n");
         }
         // Text section for global declarations
         res.append("""
@@ -264,6 +264,11 @@ public class Generator {
         if (node instanceof ValueExpressionNode valueNode ) {
             res.add(new MovInstruction(Register.RAX, valueNode.getValue()));
             res.add(generatePush(Register.RAX));
+        } else if (node instanceof DereferenceExpressionNode derefNode) {
+            res.addAll(generateExpression(derefNode.getExpression()));
+            res.add(generatePop(Register.RAX));
+            res.add(new MovInstruction(Register.RAX, new MemoryOperand(Register.RAX)));
+            res.add(generatePush(Register.RAX));
         } else if (node instanceof IdentifierExpressionNode identifierNode) {
             if (!variables.containsKey(identifierNode.getIdentifier()))
                 throw new RuntimeException("Variable used before it was declared: " + identifierNode.getIdentifier());
@@ -284,8 +289,8 @@ public class Generator {
             // Generate the instruction(s) based on operator type
             TokenType operator = binaryNode.getOperator();
             switch (operator) {
-                case MULTIPLY -> res.add(new IMulInstruction(Register.RAX, Register.RBX));
-                case DIVIDE -> res.add(new DivInstruction(Register.RAX, Register.RBX));
+                case STAR -> res.add(new IMulInstruction(Register.RAX, Register.RBX));
+                case FSLASH -> res.add(new DivInstruction(Register.RAX, Register.RBX));
                 case PLUS -> res.add(new AddInstruction(Register.RAX, Register.RBX));
                 case MINUS -> res.add(new SubInstruction(Register.RAX, Register.RBX));
                 case EQ, GEQ, LEQ, NEQ, LT, GT -> {

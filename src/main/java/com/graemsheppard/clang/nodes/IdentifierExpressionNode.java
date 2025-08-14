@@ -5,7 +5,7 @@ import lombok.Getter;
 public class IdentifierExpressionNode extends ExpressionNode {
 
     @Getter
-    private String identifier;
+    private final String identifier;
 
     public IdentifierExpressionNode(String id) {
         identifier = id;

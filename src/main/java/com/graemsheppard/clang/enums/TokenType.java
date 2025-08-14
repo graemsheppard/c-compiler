@@ -19,8 +19,8 @@ public enum TokenType {
     // Operators
     PLUS("+"),
     MINUS("-"),
-    MULTIPLY("*"),
-    DIVIDE("/"),
+    STAR("*"),
+    FSLASH("/"),
     ASSIGN("="),
     EQ("=="),
     GEQ(">="),

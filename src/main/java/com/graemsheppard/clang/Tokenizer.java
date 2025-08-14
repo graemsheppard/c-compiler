@@ -127,13 +127,13 @@ public class Tokenizer {
             }
 
             if (current == '*') {
-                tokens.add(new Token(TokenType.MULTIPLY));
+                tokens.add(new Token(TokenType.STAR));
                 cursor++;
                 continue;
             }
 
             if (current == '/') {
-                tokens.add(new Token(TokenType.DIVIDE));
+                tokens.add(new Token(TokenType.FSLASH));
                 cursor++;
                 continue;
             }
