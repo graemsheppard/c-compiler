@@ -1,7 +1,5 @@
 package com.graemsheppard.clang.nodes;
 
-
-
-public class ExpressionNode extends Node {
+public class ExpressionNode extends StatementNode {
 
 }

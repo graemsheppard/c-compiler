@@ -138,6 +138,12 @@ public class Tokenizer {
                 continue;
             }
 
+            if (current == '&') {
+                tokens.add(new Token(TokenType.AMP));
+                cursor++;
+                continue;
+            }
+
             //</editor-fold>
 
             //<editor-fold desc="Literals">

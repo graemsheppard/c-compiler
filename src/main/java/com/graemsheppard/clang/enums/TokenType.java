@@ -28,6 +28,7 @@ public enum TokenType {
     GT(">"),
     LT("<"),
     NEQ("!="),
+    AMP("&"),
 
 
     // Delimiters

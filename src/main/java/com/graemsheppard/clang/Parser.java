@@ -56,9 +56,8 @@ public class Parser {
      */
     public StatementNode parseStatement() {
         StatementNode statementNode;
-        Token currentToken = scanToken();
-        if (currentToken.getType() == TokenType.INT && peekToken(0).getType() == TokenType.IDENTIFIER && peekToken(1).getType() == TokenType.OPEN_PARENTHESIS) {
-            String id = scanToken().getText();
+        if (peekToken(0).getType() == TokenType.INT && peekToken(1).getType() == TokenType.IDENTIFIER && peekToken(2).getType() == TokenType.OPEN_PARENTHESIS) {
+            String id = scanToken(1).getText();
             scanToken();
             List<DeclarationStatementNode> params = new ArrayList<>();
             while(peekToken(0).getType() != TokenType.CLOSE_PARENTHESIS) {
@@ -77,20 +76,21 @@ public class Parser {
             }
             statementNode = new FunctionDeclarationStatementNode(id, params, body);
             scanToken();
-        } else if (currentToken.getType() == TokenType.IDENTIFIER && peekToken(0).getType() == TokenType.ASSIGN) {
+        } else if (peekToken(0).getType() == TokenType.IDENTIFIER && peekToken(1).getType() == TokenType.ASSIGN) {
             // Assignment statement, parse right side as expression
-            String id = currentToken.getText();
+            String id = scanToken().getText();
             scanToken();
             statementNode = new AssignmentStatementNode(id, parseExpression_p0());
             if (scanToken().getType() != TokenType.SEMICOLON)
                 throw new RuntimeException("Unexpected token, ';' expected");
-        } else if (currentToken.getType() == TokenType.RETURN) {
+        } else if (peekToken(0).getType() == TokenType.RETURN) {
+            scanToken();
             statementNode = new ReturnStatementNode(parseExpression_p0());
             if (scanToken().getType() != TokenType.SEMICOLON)
                 throw new RuntimeException("Unexpected token, ';' expected");
-        } else if (currentToken.getType() == TokenType.INT && peekToken(0).getType() == TokenType.IDENTIFIER) {
+        } else if (peekToken(0).getType() == TokenType.INT && peekToken(1).getType() == TokenType.IDENTIFIER) {
             // Declaration statement, parse right side as expression
-            String id = scanToken().getText();
+            String id = scanToken(1).getText();
             if (peekToken(0).getType() == TokenType.ASSIGN) {
                 scanToken();
                 statementNode = new DeclarationStatementNode(id, parseExpression_p0());
@@ -101,9 +101,8 @@ public class Parser {
                 statementNode = new DeclarationStatementNode(id);
             else
                 throw new RuntimeException("Unexpected token, ';' expected");
-        } else if(currentToken.getType() == TokenType.INT && peekToken(0).getType() == TokenType.STAR && peekToken(1).getType() == TokenType.IDENTIFIER) {
-            scanToken();
-            String id = scanToken().getText();
+        } else if(peekToken(0).getType() == TokenType.INT && peekToken(1).getType() == TokenType.STAR && peekToken(2).getType() == TokenType.IDENTIFIER) {
+            String id = scanToken(2).getText();
             if (peekToken(0).getType() == TokenType.ASSIGN) {
                 scanToken();
                 statementNode = new DeclarationStatementNode(id, parseExpression_p0(), true);
@@ -114,9 +113,9 @@ public class Parser {
                 statementNode = new DeclarationStatementNode(id, true);
             else
                 throw new RuntimeException("Unexpected token, ';' expected");
-        } else if (currentToken.getType() == TokenType.EXIT && peekToken(0).getType() == TokenType.OPEN_PARENTHESIS) {
+        } else if (peekToken(0).getType() == TokenType.EXIT && peekToken(1).getType() == TokenType.OPEN_PARENTHESIS) {
             // Exit statement, parse inside parenthesis as expression
-            scanToken();
+            scanToken(1);
             statementNode = new ExitStatementNode(parseExpression_p0());
             if (scanToken().getType() != TokenType.CLOSE_PARENTHESIS)
                 throw new RuntimeException("')' expected");
@@ -124,9 +123,9 @@ public class Parser {
             if (scanToken().getType() != TokenType.SEMICOLON)
                 throw new RuntimeException("Unexpected token, ';' expected");
 
-        } else if (currentToken.getType() == TokenType.IF && peekToken(0).getType() == TokenType.OPEN_PARENTHESIS) {
+        } else if (peekToken(0).getType() == TokenType.IF && peekToken(1).getType() == TokenType.OPEN_PARENTHESIS) {
             // If statement, parse inside parenthesis as expression
-            scanToken();
+            scanToken(1);
             var ifElseStmt = new IfElseStatementNode();
             var mainIfFrag = new IfElseFragment(ControlType.IF, parseExpression_p0());
             if (scanToken().getType() != TokenType.CLOSE_PARENTHESIS)
@@ -179,7 +178,10 @@ public class Parser {
             statementNode = ifElseStmt;
 
         } else {
-            throw new RuntimeException("Invalid statement");
+            // Try to parse as an expression only as a fallback
+            statementNode = parseExpression_p0();
+            if (scanToken().getType() != TokenType.SEMICOLON)
+                throw new RuntimeException("Unexpected token, ';' expected");
         }
 
         return statementNode;
@@ -246,33 +248,10 @@ public class Parser {
      */
     public ExpressionNode parseExpression_p2() {
         ExpressionNode expressionNodeA = parseExpression_p3();
-        // Parse left side as an identifier or a literal
-//        if (peekToken(0).getType() == TokenType.INTEGER_LITERAL) {
-//            expressionNodeA = new ValueExpressionNode(Integer.parseInt(scanToken().getText()));
-//        } else if (peekToken(0).getType() == TokenType.FLOAT_LITERAL) {
-//            expressionNodeA = new ValueExpressionNode(Float.parseFloat(scanToken().getText()));
-//        } else if (peekToken(0).getType() == TokenType.IDENTIFIER && peekToken(1).getType() == TokenType.OPEN_PARENTHESIS) {
-//            expressionNodeA = parseExpression_p4();
-//        } else if (peekToken(0).getType() == TokenType.IDENTIFIER) {
-//            expressionNodeA = new IdentifierExpressionNode(scanToken().getText());
-//        } else {
-//            throw new RuntimeException("Expected literal or identifier type");
-//        }
         while(true) {
             if (peekToken(0).getType() == TokenType.STAR || peekToken(0).getType() == TokenType.FSLASH) {
                 TokenType operator = scanToken().getType();
                 ExpressionNode expressionNodeB = parseExpression_p3();
-
-                // Parse the right side as a value or identifier
-//                if (peekToken(0).getType() == TokenType.INTEGER_LITERAL) {
-//                    expressionNodeB = new ValueExpressionNode(Integer.getInteger(scanToken().getText()));
-//                } else if (peekToken(0).getType() == TokenType.FLOAT_LITERAL) {
-//                    expressionNodeB = new ValueExpressionNode(Float.parseFloat(scanToken().getText()));
-//                }  else if (peekToken(0).getType() == TokenType.IDENTIFIER) {
-//                    expressionNodeB = new IdentifierExpressionNode(scanToken().getText());
-//                } else {
-//                    throw new RuntimeException("Expected literal or identifier type");
-//                }
 
                 // Create expression node with both the left and right sides
                 expressionNodeA = new BinaryExpressionNode(expressionNodeA, expressionNodeB);
@@ -319,6 +298,9 @@ public class Parser {
             term = new ValueExpressionNode(Float.parseFloat(scanToken().getText()));
         } else if (peekToken(0).getType() == TokenType.IDENTIFIER) {
             term = new IdentifierExpressionNode(scanToken().getText());
+        } else if (peekToken(0).getType() == TokenType.AMP && peekToken(1).getType() == TokenType.IDENTIFIER) {
+            scanToken();
+            term = new AddressExpressionNode(new IdentifierExpressionNode(scanToken().getText()));
         } else {
             throw new RuntimeException("Expected literal or identifier type");
         }
@@ -333,6 +315,12 @@ public class Parser {
 
     @NonNull
     private Token scanToken() {
+        return tokens.get(index++);
+    }
+
+    @NonNull
+    private Token scanToken(int skip) {
+        index += skip;
         return tokens.get(index++);
     }
 

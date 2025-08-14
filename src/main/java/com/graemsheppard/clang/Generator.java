@@ -136,8 +136,9 @@ public class Generator {
             res.append(current.toString());
         }
 
-        // Push 0 because the program proceeds into exit section
+        // Push 0 because the program proceeds into exit section, subtract 8 because RIP is not pushed
         res.append(new PushInstruction(0));
+        res.append(new SubInstruction(Register.RSP, 8));
 
         // Built in subroutines
         Arrays.stream(NATIVE_FUNCTIONS)
@@ -248,6 +249,10 @@ public class Generator {
             res.add(new RetInstruction());
             res.add(new LabelInstruction("end_" + scopeName));
 
+        } else {
+            res.addAll(generateExpression((ExpressionNode)node));
+            // Since all expressions push to the stack and this expression result is not used pop
+            res.add(new AddInstruction(Register.RSP, 8));
         }
 
         return res;
@@ -276,6 +281,14 @@ public class Generator {
             // Gets the variable based on the offset and pushes it onto the stack
             int variableLoc = variables.get(identifierNode.getIdentifier()).getLocationRelativeTo(framePointer);
             res.add(new MovInstruction(Register.RAX, new MemoryOperand(Register.RBP, variableLoc)));
+            res.add(generatePush(Register.RAX));
+        } else if (node instanceof AddressExpressionNode addressNode) {
+            var identifierNode = addressNode.getIdentifier();
+            if (!variables.containsKey(identifierNode.getIdentifier()))
+                throw new RuntimeException("Variable used before it was declared: " + identifierNode.getIdentifier());
+            // Gets the address based on the offset and pushes it onto the stack
+            int variableLoc = variables.get(identifierNode.getIdentifier()).getLocationRelativeTo(framePointer);
+            res.add(new LeaInstruction(Register.RAX, new MemoryOperand(Register.RBP, variableLoc)));
             res.add(generatePush(Register.RAX));
         } else if (node instanceof BinaryExpressionNode binaryNode) {
 
@@ -347,7 +360,7 @@ public class Generator {
         List<Instruction> res = new ArrayList<>(2);
         res.add(generatePush(Register.RBP));
         res.add(new MovInstruction(Register.RBP, Register.RSP));
-        stackPointer -= 8 * numParams + 8;
+        stackPointer -= 8 * numParams + 8; // -8 for implicit push RIP
         framePointer = stackPointer;
         scopes.put(scopeName, new Scope(scopeName, framePointer));
 
@@ -357,7 +370,7 @@ public class Generator {
     private List<Instruction> destroyStackFrame(int numParams) {
         List<Instruction> res = new ArrayList<>(2);
         stackPointer = framePointer;
-        stackPointer += 8 * numParams + 8;
+        stackPointer += 8 * numParams + 8; // +8 for implicit pop RIP
 
         res.add(new MovInstruction(Register.RSP, Register.RBP));
         res.add(generatePop(Register.RBP));

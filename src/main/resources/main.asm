@@ -4,22 +4,62 @@ section .data
 section .text
     global _main
 _main:
-    push    0
     mov     rbp,    rsp
-	mov 	rax, 	rbp
+	mov 	rax, 	0x0
 	push 	rax
-	mov 	rax, 	0xaa
-	push 	rax
+if_0:
 	mov 	rax, 	[rbp-8]
+	push 	rax
+	mov 	rax, 	0x0
+	push 	rax
+	pop 	rbx
+	pop 	rax
+	cmp 	rax, 	rbx
+	setne 	al
+	movzx 	rax, 	al
+	test 	rax, 	rax
+	jz   	if_0_else
+	push 	rbp
+	mov 	rbp, 	rsp
+	mov 	rax, 	0x1
+	push 	rax
+	call 	exit
+	mov 	rsp, 	rbp
+	pop 	rbp
+	jmp 	endif_0
+if_0_else:
+	push 	rbp
+	mov 	rbp, 	rsp
+	mov 	rax, 	0x2710
+	push 	rax
+	lea 	rax, 	[rbp+8]
 	push 	rax
 	call 	itoa
 	add 	rsp, 	16
 	push 	rax
-	mov 	rax, 	[rbp-8]
-	mov 	rax, 	[rax]
+	mov 	rax, 	0xa
 	push 	rax
-	call 	exit
+	mov 	rax, 	[rbp-8]
+	push 	rax
+	mov 	rax, 	[rbp+8]
+	push 	rax
+	call 	print
+	add 	rsp, 	16
+	push 	rax
+	add 	rsp, 	8
+	lea 	rax, 	[rbp-16]
+	push 	rax
+	mov 	rax, 	0x1
+	push 	rax
+	call 	print
+	add 	rsp, 	16
+	push 	rax
+	add 	rsp, 	8
+	mov 	rsp, 	rbp
+	pop 	rbp
+endif_0:
 	push 	0
+	sub 	rsp, 	8
 exit:   ; exit(int code)
     push    rbp
     mov     rbp,    rsp
