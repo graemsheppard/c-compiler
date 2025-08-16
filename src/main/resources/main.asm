@@ -7,6 +7,10 @@ _main:
     mov     rbp,    rsp
 	mov 	rax, 	0x0
 	push 	rax
+	mov 	rax, 	0x0
+	push 	rax
+	mov 	rax, 	0xa
+	push 	rax
 if_0:
 	mov 	rax, 	[rbp-8]
 	push 	rax
@@ -19,44 +23,101 @@ if_0:
 	movzx 	rax, 	al
 	test 	rax, 	rax
 	jz   	if_0_else
-	push 	rbp
-	mov 	rbp, 	rsp
+	sub 	rsp, 	8
+	mov 	[rsp], 	rsp
 	mov 	rax, 	0x1
 	push 	rax
-	call 	exit
-	mov 	rsp, 	rbp
-	pop 	rbp
+	mov 	rsp, 	[rbp-32]
+	pop 	rsp
+	add 	rsp, 	8
 	jmp 	endif_0
 if_0_else:
-	push 	rbp
-	mov 	rbp, 	rsp
-	mov 	rax, 	0x2710
+	sub 	rsp, 	8
+	mov 	[rsp], 	rsp
+	sub 	rsp, 	8
+	mov 	[rsp], 	rsp
+while_0:
+	mov 	rax, 	[rbp-16]
 	push 	rax
-	lea 	rax, 	[rbp+8]
+	mov 	rax, 	0x64
+	push 	rax
+	pop 	rbx
+	pop 	rax
+	cmp 	rax, 	rbx
+	setl 	al
+	movzx 	rax, 	al
+	test 	rax, 	rax
+	jz   	end_while_0
+	mov 	rax, 	0x0
+	push 	rax
+	sub 	rsp, 	8
+	mov 	[rsp], 	rsp
+while_1:
+	mov 	rax, 	[rbp-48]
+	push 	rax
+	mov 	rax, 	0xa
+	push 	rax
+	pop 	rbx
+	pop 	rax
+	cmp 	rax, 	rbx
+	setl 	al
+	movzx 	rax, 	al
+	test 	rax, 	rax
+	jz   	end_while_1
+	mov 	rax, 	[rbp-16]
+	push 	rax
+	mov 	rax, 	[rbp-48]
+	push 	rax
+	pop 	rbx
+	pop 	rax
+	add 	rax, 	rbx
+	push 	rax
+	lea 	rax, 	[rbp-8]
 	push 	rax
 	call 	itoa
 	add 	rsp, 	16
 	push 	rax
-	mov 	rax, 	0xa
+	mov 	rax, 	[rbp-64]
 	push 	rax
 	mov 	rax, 	[rbp-8]
 	push 	rax
-	mov 	rax, 	[rbp+8]
-	push 	rax
 	call 	print
 	add 	rsp, 	16
-	push 	rax
-	add 	rsp, 	8
-	lea 	rax, 	[rbp-16]
+	lea 	rax, 	[rbp-24]
 	push 	rax
 	mov 	rax, 	0x1
 	push 	rax
 	call 	print
 	add 	rsp, 	16
+	mov 	rax, 	[rbp-48]
 	push 	rax
+	mov 	rax, 	0x1
+	push 	rax
+	pop 	rbx
+	pop 	rax
+	add 	rax, 	rbx
+	mov 	[rbp-48], 	rax
+	mov 	rsp, 	[rbp-56]
+	jmp 	while_1
+	pop 	rsp
+end_while_1:
 	add 	rsp, 	8
-	mov 	rsp, 	rbp
-	pop 	rbp
+	mov 	rax, 	[rbp-16]
+	push 	rax
+	mov 	rax, 	0xa
+	push 	rax
+	pop 	rbx
+	pop 	rax
+	add 	rax, 	rbx
+	mov 	[rbp-16], 	rax
+	mov 	rsp, 	[rbp-40]
+	jmp 	while_0
+	pop 	rsp
+end_while_0:
+	add 	rsp, 	8
+	mov 	rsp, 	[rbp-32]
+	pop 	rsp
+	add 	rsp, 	8
 endif_0:
 	push 	0
 	sub 	rsp, 	8

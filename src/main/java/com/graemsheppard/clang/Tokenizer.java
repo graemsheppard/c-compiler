@@ -192,6 +192,8 @@ public class Tokenizer {
                     tokens.add(new Token(TokenType.ELSE));
                 } else if (tokenString.equals(TokenType.RETURN.getText())) {
                     tokens.add(new Token(TokenType.RETURN));
+                } else if (tokenString.equals(TokenType.WHILE.getText())) {
+                    tokens.add(new Token(TokenType.WHILE));
                 } else {
                     tokens.add(new Token(TokenType.IDENTIFIER, tokenString));
                 }

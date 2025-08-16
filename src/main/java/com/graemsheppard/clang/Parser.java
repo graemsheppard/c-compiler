@@ -6,6 +6,7 @@ import com.graemsheppard.clang.fragments.IfElseFragment;
 import com.graemsheppard.clang.nodes.*;
 import lombok.NonNull;
 
+import javax.swing.plaf.nimbus.State;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -177,6 +178,21 @@ public class Parser {
             }
             statementNode = ifElseStmt;
 
+        } else if (peekToken(0).getType() == TokenType.WHILE && peekToken(1).getType() == TokenType.OPEN_PARENTHESIS) {
+            scanToken(1);
+            var condition = parseExpression_p0();
+            var body = new ArrayList<StatementNode>();
+
+            if (scanToken().getType() != TokenType.CLOSE_PARENTHESIS)
+                throw new RuntimeException("')' expected");
+            if (scanToken().getType() != TokenType.OPEN_BRACE)
+                throw new RuntimeException("'{' expected");
+
+            while (peekToken(0).getType() != TokenType.CLOSE_BRACE) {
+                body.add(parseStatement());
+            }
+            scanToken();
+            statementNode = new WhileStatementNode(condition, body);
         } else {
             // Try to parse as an expression only as a fallback
             statementNode = parseExpression_p0();

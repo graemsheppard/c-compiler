@@ -63,6 +63,11 @@ public class Generator {
      */
     private int ifStatementCount = 0;
 
+    /**
+     * Keeps track of the number of whileStatements for branch naming
+     */
+    private int whileStatementCount = 0;
+
     public Generator (ProgramNode programRoot) {
         root = programRoot;
     }
@@ -182,9 +187,11 @@ public class Generator {
                     res.add(new JzInstruction(scopeList.get(i + 1)));
                 }
 
-                res.add(generatePush(Register.RBP));
-                res.add(new MovInstruction(Register.RBP, Register.RSP));
-                framePointer = stackPointer;
+                // Store the location of the stack pointer
+                stackPointer -= 8;
+                int stackLoc = stackPointer - framePointer;
+                res.add(new SubInstruction(Register.RSP, 8));
+                res.add(new MovInstruction(new MemoryOperand(Register.RSP), new RegisterOperand(Register.RSP)));
                 scopes.put(scope, new Scope(scope, framePointer));
 
                 // Generates the statements within the current scope
@@ -192,10 +199,11 @@ public class Generator {
                     res.addAll(generateStatement(statementNode));
                 }
 
-                // Return the stack pointer to the start of the frame and pop to get the old frame pointer
-                res.add(new MovInstruction(Register.RSP, Register.RBP));
-                stackPointer = framePointer;
-                res.add(generatePop(Register.RBP));
+                // Return stack to where it was at the start of the scope
+                res.add(new MovInstruction(Register.RSP, new MemoryOperand(Register.RBP, stackLoc)));
+                res.add(generatePop(Register.RSP));
+                stackPointer += 8;
+                res.add(new AddInstruction(Register.RSP, 8));
 
                 // Jump to the end label
                 if (fragment.getType() != ControlType.ELSE) {
@@ -208,10 +216,43 @@ public class Generator {
                 }
 
                 scopes.remove(scopes.lastKey());
-                framePointer = currentScope().getFramePointer();
             }
             res.add(new LabelInstruction(endLabel));
 
+        } else if (node instanceof WhileStatementNode whileNode) {
+            String scopeName = "while_" + whileStatementCount++;
+            String endLabel = "end_" + scopeName;
+
+            // Store the location of the stack pointer
+            stackPointer -= 8;
+            int stackLoc = stackPointer - framePointer;
+            res.add(new SubInstruction(Register.RSP, 8));
+            res.add(new MovInstruction(new MemoryOperand(Register.RSP), new RegisterOperand(Register.RSP)));
+            res.add(new LabelInstruction(scopeName));
+            scopes.put(scopeName, new Scope(scopeName, framePointer));
+            // Evaluate condition and conditional jump to end
+            res.addAll(generateExpression(whileNode.getCondition()));
+            res.add(generatePop(Register.RAX));
+            res.add(new TestInstruction(Register.RAX, Register.RAX));
+            res.add(new JzInstruction(endLabel));
+
+            // Generate the body
+            for (var stmt : whileNode.getBody()) {
+                res.addAll(generateStatement(stmt));
+            }
+            // Return stack to where it was at the beginning of the loop
+            res.add(new MovInstruction(Register.RSP, new MemoryOperand(Register.RBP, stackLoc)));
+            res.add(new JmpInstruction(scopeName));
+
+            res.add(generatePop(Register.RSP));
+            for (var variable : currentScope().getVariables()) {
+                variables.remove(variable);
+            }
+            scopes.remove(scopeName);
+            // End label to jump to
+            res.add(new LabelInstruction(endLabel));
+            stackPointer += 8;
+            res.add(new AddInstruction(Register.RSP, 8));
         } else if (node instanceof AssignmentStatementNode assignmentStatementNode) {
             // If the variable is out of scope it will have been removed from the map already
             if (!variables.containsKey(assignmentStatementNode.getIdentifier()))
@@ -229,7 +270,7 @@ public class Generator {
             String scopeName = functionNode.getIdentifier();
             res.add(new JmpInstruction("end_" + scopeName));
             res.add(new LabelInstruction(scopeName));
-            res.addAll(createStackFrame(scopeName, functionNode.getParams().size()));
+            res.addAll(createStackFrame(scopeName, functionNode.getParams().size() + 1));
 
             // Allocate space for params and increment stack size, assuming caller will provide the correct args
             // The extra 8 bytes is to account for the return address which is pushed on call
@@ -245,14 +286,14 @@ public class Generator {
                 res.addAll(generateStatement(stmt));
             }
 
-            res.addAll(destroyStackFrame(functionNode.getParams().size()));
+            res.addAll(destroyStackFrame(functionNode.getParams().size() + 1));
             res.add(new RetInstruction());
             res.add(new LabelInstruction("end_" + scopeName));
 
         } else {
             res.addAll(generateExpression((ExpressionNode)node));
             // Since all expressions push to the stack and this expression result is not used pop
-            res.add(new AddInstruction(Register.RSP, 8));
+            res.add(generatePop(Register.RAX));
         }
 
         return res;
@@ -356,21 +397,32 @@ public class Generator {
         return new PopInstruction(new RegisterOperand(register));
     }
 
+    /**
+     * Creates a stack frame and adds the scope, handles all offsetting of the compiler's framePointer and stackPointer
+     * @param scopeName Name of the scope, a unique identifier
+     * @param numParams Number of params a function takes, for functions has a minimum of 1 to account for RIP
+     * @return The instructions that create the actual stack frame
+     */
     private List<Instruction> createStackFrame(String scopeName, int numParams) {
         List<Instruction> res = new ArrayList<>(2);
         res.add(generatePush(Register.RBP));
         res.add(new MovInstruction(Register.RBP, Register.RSP));
-        stackPointer -= 8 * numParams + 8; // -8 for implicit push RIP
+        stackPointer -= 8 * numParams;
         framePointer = stackPointer;
         scopes.put(scopeName, new Scope(scopeName, framePointer));
 
         return res;
     }
 
+    /**
+     * Tears down a stack frame
+     * @param numParams Number of params passed to the stack frame, for functions has a minimum of 1 (RIP)
+     * @return The instructions that create the actual stack frame
+     */
     private List<Instruction> destroyStackFrame(int numParams) {
         List<Instruction> res = new ArrayList<>(2);
         stackPointer = framePointer;
-        stackPointer += 8 * numParams + 8; // +8 for implicit pop RIP
+        stackPointer += 8 * numParams;
 
         res.add(new MovInstruction(Register.RSP, Register.RBP));
         res.add(generatePop(Register.RBP));

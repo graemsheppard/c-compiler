@@ -1,9 +1,17 @@
 int t = 0;
-if(t != 0) {
-    exit(1);
+int k = 0;
+int newln = 10;
+if (t != 0) {
+    int j = 1;
 } else {
-    int* str = itoa(10000, &t);
-    int newLn = 10;
-    print(str, t);
-    print(&newLn, 1);
+    while (k < 100) {
+        int j = 0;
+        while (j < 10) {
+            int* str = itoa(k + j, &t);
+            print(str, t);
+            print(&newln, 1);
+            j = j + 1;
+        }
+        k = k + 10;
+    }
 }
