@@ -1,5 +1,7 @@
 int t = 0;
 int k = 0;
+int test[10];
+t = test[1];
 int newln = 10;
 if (t != 0) {
     int j = 1;

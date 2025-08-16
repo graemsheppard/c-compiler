@@ -1,6 +1,7 @@
 package com.graemsheppard.clang;
 
 import com.graemsheppard.clang.enums.ControlType;
+import com.graemsheppard.clang.enums.DataType;
 import com.graemsheppard.clang.enums.TokenType;
 import com.graemsheppard.clang.fragments.IfElseFragment;
 import com.graemsheppard.clang.nodes.*;
@@ -91,8 +92,14 @@ public class Parser {
                 throw new RuntimeException("Unexpected token, ';' expected");
         } else if (peekToken(0).getType() == TokenType.INT && peekToken(1).getType() == TokenType.IDENTIFIER) {
             // Declaration statement, parse right side as expression
-            String id = scanToken(1).getText();
-            if (peekToken(0).getType() == TokenType.ASSIGN) {
+            String type = scanToken().getText();
+            String id = scanToken().getText();
+            if (peekToken(0).getType() == TokenType.OPEN_BRACKET) {
+                int size = Integer.parseInt(scanToken(1).getText());
+                var dataType = DataType.from(type);
+                statementNode = new ArrayDeclarationStatementNode(id, dataType, size);
+                scanToken(1);
+            } else if (peekToken(0).getType() == TokenType.ASSIGN) {
                 scanToken();
                 statementNode = new DeclarationStatementNode(id, parseExpression_p0());
                 if (scanToken().getType() != TokenType.SEMICOLON)
@@ -102,7 +109,7 @@ public class Parser {
                 statementNode = new DeclarationStatementNode(id);
             else
                 throw new RuntimeException("Unexpected token, ';' expected");
-        } else if(peekToken(0).getType() == TokenType.INT && peekToken(1).getType() == TokenType.STAR && peekToken(2).getType() == TokenType.IDENTIFIER) {
+        } else if (peekToken(0).getType() == TokenType.INT && peekToken(1).getType() == TokenType.STAR && peekToken(2).getType() == TokenType.IDENTIFIER) {
             String id = scanToken(2).getText();
             if (peekToken(0).getType() == TokenType.ASSIGN) {
                 scanToken();
@@ -300,6 +307,12 @@ public class Parser {
             }
             scanToken();
             node = functionNode;
+        } else if (peekToken(0).getType() == TokenType.IDENTIFIER && peekToken(1).getType() == TokenType.OPEN_BRACKET) {
+            String id = scanToken().getText();
+            scanToken();
+            ArrayReferenceExpressionNode arrayNode = new ArrayReferenceExpressionNode(id, parseExpression_p0());
+            scanToken();
+            node = arrayNode;
         } else {
             node = parseTerm();
         }

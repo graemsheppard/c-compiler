@@ -5,6 +5,7 @@ import com.graemsheppard.clang.enums.Register;
 import com.graemsheppard.clang.enums.TokenType;
 import com.graemsheppard.clang.instructions.*;
 import com.graemsheppard.clang.instructions.operands.MemoryOperand;
+import com.graemsheppard.clang.instructions.operands.Operand;
 import com.graemsheppard.clang.instructions.operands.RegisterOperand;
 import com.graemsheppard.clang.nodes.*;
 
@@ -168,6 +169,15 @@ public class Generator {
             var locator = new VariableLocation(declarationNode.getIdentifier(), stackPointer - framePointer, currentScope());
             variables.put(declarationNode.getIdentifier(), locator);
             currentScope().getVariables().add(declarationNode.getIdentifier());
+        } else if (node instanceof ArrayDeclarationStatementNode arrayNode) {
+            // Allocate stack space assume 8 byte type for now
+            int spaceReq = 8 * arrayNode.getSize();
+            int loc = stackPointer - framePointer - 8;
+            stackPointer -= spaceReq;
+            res.add(new SubInstruction(Register.RSP, spaceReq));
+            var locator = new VariableLocation(arrayNode.getIdentifier(), loc, currentScope());
+            variables.put(arrayNode.getIdentifier(), locator);
+            currentScope().getVariables().add(arrayNode.getIdentifier());
         } else if (node instanceof ExitStatementNode exitStatementNode) {
             res.addAll(generateExpression(exitStatementNode.getExpressionNode()));
             res.add(new CallInstruction("exit"));
@@ -323,6 +333,20 @@ public class Generator {
             int variableLoc = variables.get(identifierNode.getIdentifier()).getLocationRelativeTo(framePointer);
             res.add(new MovInstruction(Register.RAX, new MemoryOperand(Register.RBP, variableLoc)));
             res.add(generatePush(Register.RAX));
+        } else if (node instanceof ArrayReferenceExpressionNode arrayNode) {
+            if (!variables.containsKey(arrayNode.getIdentifier()))
+                throw new RuntimeException("Variable used before it was declared: " + arrayNode.getIdentifier());
+            res.addAll(generateExpression(arrayNode.getExpression()));
+            res.add(generatePop(Register.RAX));
+            res.add(new MovInstruction(Register.RBX, 8));
+            res.add(new IMulInstruction(Register.RAX, Register.RBX));
+
+            // Gets the variable based on the offset
+            int variableLoc = variables.get(arrayNode.getIdentifier()).getLocationRelativeTo(framePointer);
+            res.add(new LeaInstruction(Register.RBX, new MemoryOperand(Register.RBP, variableLoc)));
+            res.add(new AddInstruction(Register.RAX, Register.RBX));
+
+            res.add(generatePush(new MemoryOperand(Register.RAX, 0)));
         } else if (node instanceof AddressExpressionNode addressNode) {
             var identifierNode = addressNode.getIdentifier();
             if (!variables.containsKey(identifierNode.getIdentifier()))
@@ -383,8 +407,12 @@ public class Generator {
      * @return the PushInstruction
      */
     private PushInstruction generatePush(Register register) {
+        return generatePush(new RegisterOperand(register));
+    }
+
+    private PushInstruction generatePush(Operand operand) {
         stackPointer -= 8;
-        return new PushInstruction(new RegisterOperand(register));
+        return new PushInstruction(operand);
     }
 
     /**

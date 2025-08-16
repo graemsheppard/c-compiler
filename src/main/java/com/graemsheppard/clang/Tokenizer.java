@@ -58,6 +58,18 @@ public class Tokenizer {
                 continue;
             }
 
+            if (current == '[') {
+                tokens.add(new Token(TokenType.OPEN_BRACKET));
+                cursor++;
+                continue;
+            }
+
+            if (current == ']') {
+                tokens.add(new Token(TokenType.CLOSE_BRACKET));
+                cursor++;
+                continue;
+            }
+
             if (current == ';') {
                 tokens.add(new Token(TokenType.SEMICOLON));
                 cursor++;
