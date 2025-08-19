@@ -78,11 +78,19 @@ public class Parser {
             }
             statementNode = new FunctionDeclarationStatementNode(id, params, body);
             scanToken();
-        } else if (peekToken(0).getType() == TokenType.IDENTIFIER && peekToken(1).getType() == TokenType.ASSIGN) {
+        } else if (peekToken(0).getType() == TokenType.IDENTIFIER && (peekToken(1).getType() == TokenType.ASSIGN || peekToken(1).getType() == TokenType.OPEN_BRACKET)) {
             // Assignment statement, parse right side as expression
             String id = scanToken().getText();
-            scanToken();
-            statementNode = new AssignmentStatementNode(id, parseExpression_p0());
+
+            // Check if we are assigning an array value
+            if (scanToken().getType() == TokenType.OPEN_BRACKET) {
+                var offset = parseExpression_p0();
+                scanToken(1);
+                statementNode = new AssignmentStatementNode(id, parseExpression_p0(), offset);
+            } else {
+                statementNode = new AssignmentStatementNode(id, parseExpression_p0());
+            }
+
             if (scanToken().getType() != TokenType.SEMICOLON)
                 throw new RuntimeException("Unexpected token, ';' expected");
         } else if (peekToken(0).getType() == TokenType.RETURN) {

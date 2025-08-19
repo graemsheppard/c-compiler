@@ -7,48 +7,15 @@ _main:
     mov     rbp,    rsp
 	mov 	rax, 	0x0
 	push 	rax
-	mov 	rax, 	0x0
-	push 	rax
 	sub 	rsp, 	80
-	mov 	rax, 	0x1
-	mov 	rbx, 	8
-	imul 	rax, 	rbx
-	lea 	rbx, 	[rbp-24]
-	add 	rax, 	rbx
-	push qword	[rax]
-	pop 	rax
-	mov 	[rbp-8], 	rax
 	mov 	rax, 	0xa
 	push 	rax
-if_0:
-	mov 	rax, 	[rbp-8]
-	push 	rax
-	mov 	rax, 	0x0
-	push 	rax
-	pop 	rbx
-	pop 	rax
-	cmp 	rax, 	rbx
-	setne 	al
-	movzx 	rax, 	al
-	test 	rax, 	rax
-	jz   	if_0_else
-	sub 	rsp, 	8
-	mov 	[rsp], 	rsp
-	mov 	rax, 	0x1
-	push 	rax
-	mov 	rsp, 	[rbp-112]
-	pop 	rsp
-	add 	rsp, 	8
-	jmp 	endif_0
-if_0_else:
-	sub 	rsp, 	8
-	mov 	[rsp], 	rsp
 	sub 	rsp, 	8
 	mov 	[rsp], 	rsp
 while_0:
-	mov 	rax, 	[rbp-16]
+	mov 	rax, 	[rbp-8]
 	push 	rax
-	mov 	rax, 	0x64
+	mov 	rax, 	0xa
 	push 	rax
 	pop 	rbx
 	pop 	rax
@@ -57,12 +24,37 @@ while_0:
 	movzx 	rax, 	al
 	test 	rax, 	rax
 	jz   	end_while_0
-	mov 	rax, 	0x0
+	mov 	rax, 	[rbp-8]
 	push 	rax
+	mov 	rax, 	[rbp-8]
+	push 	rax
+	mov 	rbx, 	8
+	imul 	rax, 	rbx
+	push 	rax
+	lea 	rax, 	[rbp-16]
+	pop 	rbx
+	sub 	rax, 	rbx
+	pop 	rbx
+	mov 	[rax], 	rbx
+	mov 	rax, 	[rbp-8]
+	push 	rax
+	mov 	rax, 	0x1
+	push 	rax
+	pop 	rbx
+	pop 	rax
+	add 	rax, 	rbx
+	mov 	[rbp-8], 	rax
+	mov 	rsp, 	[rbp-104]
+	jmp 	while_0
+	pop 	rsp
+end_while_0:
+	add 	rsp, 	8
+	mov 	rax, 	0x0
+	mov 	[rbp-8], 	rax
 	sub 	rsp, 	8
 	mov 	[rsp], 	rsp
 while_1:
-	mov 	rax, 	[rbp-128]
+	mov 	rax, 	[rbp-8]
 	push 	rax
 	mov 	rax, 	0xa
 	push 	rax
@@ -73,61 +65,44 @@ while_1:
 	movzx 	rax, 	al
 	test 	rax, 	rax
 	jz   	end_while_1
-	mov 	rax, 	[rbp-16]
+	mov 	rax, 	0x0
 	push 	rax
-	mov 	rax, 	[rbp-128]
-	push 	rax
-	pop 	rbx
-	pop 	rax
-	add 	rax, 	rbx
-	push 	rax
-	lea 	rax, 	[rbp-8]
+	mov 	rax, 	[rbp-8]
+	mov 	rbx, 	8
+	imul 	rax, 	rbx
+	lea 	rbx, 	[rbp-16]
+	sub 	rbx, 	rax
+	push qword 	[rbx]
+	lea 	rax, 	[rbp-112]
 	push 	rax
 	call 	itoa
 	add 	rsp, 	16
 	push 	rax
-	mov 	rax, 	[rbp-144]
+	mov 	rax, 	[rbp-120]
 	push 	rax
-	mov 	rax, 	[rbp-8]
+	mov 	rax, 	[rbp-112]
 	push 	rax
 	call 	print
 	add 	rsp, 	16
-	lea 	rax, 	[rbp-104]
+	lea 	rax, 	[rbp-96]
 	push 	rax
 	mov 	rax, 	0x1
 	push 	rax
 	call 	print
 	add 	rsp, 	16
-	mov 	rax, 	[rbp-128]
+	mov 	rax, 	[rbp-8]
 	push 	rax
 	mov 	rax, 	0x1
 	push 	rax
 	pop 	rbx
 	pop 	rax
 	add 	rax, 	rbx
-	mov 	[rbp-128], 	rax
-	mov 	rsp, 	[rbp-136]
+	mov 	[rbp-8], 	rax
+	mov 	rsp, 	[rbp-104]
 	jmp 	while_1
 	pop 	rsp
 end_while_1:
 	add 	rsp, 	8
-	mov 	rax, 	[rbp-16]
-	push 	rax
-	mov 	rax, 	0xa
-	push 	rax
-	pop 	rbx
-	pop 	rax
-	add 	rax, 	rbx
-	mov 	[rbp-16], 	rax
-	mov 	rsp, 	[rbp-120]
-	jmp 	while_0
-	pop 	rsp
-end_while_0:
-	add 	rsp, 	8
-	mov 	rsp, 	[rbp-112]
-	pop 	rsp
-	add 	rsp, 	8
-endif_0:
 	push 	0
 	sub 	rsp, 	8
 exit:   ; exit(int code)

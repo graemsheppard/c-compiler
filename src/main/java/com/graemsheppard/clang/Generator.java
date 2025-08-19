@@ -268,11 +268,25 @@ public class Generator {
             if (!variables.containsKey(assignmentStatementNode.getIdentifier()))
                 throw new RuntimeException("Variable used before it was declared: " + assignmentStatementNode.getIdentifier());
 
-            // Pop the value from the expression and move it onto the stack at the variable's location
-            res.addAll(generateExpression(assignmentStatementNode.getExpression()));
-            res.add(generatePop(Register.RAX));
-            int variableLoc = variables.get(assignmentStatementNode.getIdentifier()).getLocationRelativeTo(framePointer);
-            res.add(new MovInstruction(new MemoryOperand(Register.RBP, variableLoc), new RegisterOperand(Register.RAX)));
+            if (assignmentStatementNode.getOffset() != null) {
+                res.addAll(generateExpression(assignmentStatementNode.getExpression()));
+                res.addAll(generateExpression(assignmentStatementNode.getOffset()));
+                res.add(new MovInstruction(Register.RBX, 8));
+                res.add(new IMulInstruction(Register.RAX, Register.RBX));
+                res.add(generatePush(Register.RAX));
+                int variableLoc = variables.get(assignmentStatementNode.getIdentifier()).getLocationRelativeTo(framePointer);
+                res.add(new LeaInstruction(new RegisterOperand(Register.RAX), new MemoryOperand(Register.RBP, variableLoc)));
+                res.add(generatePop(Register.RBX));
+                res.add(new SubInstruction(Register.RAX, Register.RBX));
+                res.add(generatePop(Register.RBX));
+                res.add(new MovInstruction(new MemoryOperand(Register.RAX), new RegisterOperand(Register.RBX)));
+            } else {
+                // Pop the value from the expression and move it onto the stack at the variable's location
+                res.addAll(generateExpression(assignmentStatementNode.getExpression()));
+                res.add(generatePop(Register.RAX));
+                int variableLoc = variables.get(assignmentStatementNode.getIdentifier()).getLocationRelativeTo(framePointer);
+                res.add(new MovInstruction(new MemoryOperand(Register.RBP, variableLoc), new RegisterOperand(Register.RAX)));
+            }
         } else if(node instanceof ReturnStatementNode returnNode) {
             res.addAll(generateExpression(returnNode.getExpression()));
             res.add(generatePop(Register.RAX));
@@ -344,9 +358,9 @@ public class Generator {
             // Gets the variable based on the offset
             int variableLoc = variables.get(arrayNode.getIdentifier()).getLocationRelativeTo(framePointer);
             res.add(new LeaInstruction(Register.RBX, new MemoryOperand(Register.RBP, variableLoc)));
-            res.add(new AddInstruction(Register.RAX, Register.RBX));
+            res.add(new SubInstruction(Register.RBX, Register.RAX));
 
-            res.add(generatePush(new MemoryOperand(Register.RAX, 0)));
+            res.add(generatePushq(new MemoryOperand(Register.RBX, 0)));
         } else if (node instanceof AddressExpressionNode addressNode) {
             var identifierNode = addressNode.getIdentifier();
             if (!variables.containsKey(identifierNode.getIdentifier()))
@@ -413,6 +427,15 @@ public class Generator {
     private PushInstruction generatePush(Operand operand) {
         stackPointer -= 8;
         return new PushInstruction(operand);
+    }
+
+    private PushqInstruction generatePushq(Register register) {
+        return generatePushq(new RegisterOperand(register));
+    }
+
+    private PushqInstruction generatePushq(Operand operand) {
+        stackPointer -= 8;
+        return new PushqInstruction(operand);
     }
 
     /**
