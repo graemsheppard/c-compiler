@@ -290,6 +290,8 @@ public class Generator {
         } else if(node instanceof ReturnStatementNode returnNode) {
             res.addAll(generateExpression(returnNode.getExpression()));
             res.add(generatePop(Register.RAX));
+            var scopeName = containingFunction().getName();
+            res.add(new JmpInstruction("ret_" + scopeName));
         } else if (node instanceof FunctionDeclarationStatementNode functionNode) {
             String scopeName = functionNode.getIdentifier();
             res.add(new JmpInstruction("end_" + scopeName));
@@ -310,7 +312,8 @@ public class Generator {
                 res.addAll(generateStatement(stmt));
             }
 
-            res.addAll(destroyStackFrame(functionNode.getParams().size() + 1));
+            res.add(new LabelInstruction("ret_" + scopeName));
+            res.addAll(destroyStackFrame());
             res.add(new RetInstruction());
             res.add(new LabelInstruction("end_" + scopeName));
 
@@ -460,20 +463,20 @@ public class Generator {
         res.add(new MovInstruction(Register.RBP, Register.RSP));
         stackPointer -= 8 * numParams;
         framePointer = stackPointer;
-        scopes.put(scopeName, new Scope(scopeName, framePointer));
+        scopes.put(scopeName, new Scope(scopeName, framePointer, numParams));
 
         return res;
     }
 
     /**
      * Tears down a stack frame
-     * @param numParams Number of params passed to the stack frame, for functions has a minimum of 1 (RIP)
      * @return The instructions that create the actual stack frame
      */
-    private List<Instruction> destroyStackFrame(int numParams) {
+    private List<Instruction> destroyStackFrame() {
         List<Instruction> res = new ArrayList<>(2);
+
         stackPointer = framePointer;
-        stackPointer += 8 * numParams;
+        stackPointer += 8 * currentScope().getNumParams();
 
         res.add(new MovInstruction(Register.RSP, Register.RBP));
         res.add(generatePop(Register.RBP));
@@ -495,10 +498,15 @@ public class Generator {
         return scopes.get(scopes.lastKey());
     }
 
-    private Scope containingScope() {
-        var keys = scopes.keySet().stream().toList();
-        int numKeys = keys.size();
-        return scopes.get(keys.size() > 1 ? keys.get(numKeys - 2) : keys.get(0));
+    private Scope containingFunction() {
+        var scopeArr = scopes.values().toArray();
+        for (int i = scopeArr.length - 1; i >= 0; i--) {
+            Scope scope = (Scope) scopeArr[i];
+            if (scope.isFunction()) {
+                return scope;
+            }
+        }
+        return null;
     }
 
 
