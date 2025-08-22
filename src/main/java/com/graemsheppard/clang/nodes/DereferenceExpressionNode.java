@@ -9,5 +9,6 @@ public class DereferenceExpressionNode extends ExpressionNode {
 
     public DereferenceExpressionNode(ExpressionNode expr) {
         expression = expr;
+        type = expr.getType();
     }
 }

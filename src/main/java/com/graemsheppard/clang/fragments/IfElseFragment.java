@@ -19,15 +19,20 @@ public class IfElseFragment {
         @Getter
         private final List<StatementNode> body;
 
-        public IfElseFragment(ControlType type, ExpressionNode condition) {
+        @Getter
+        private final String scope;
+
+        public IfElseFragment(ControlType type, ExpressionNode condition, String scope) {
             this.type = type;
             this.condition = condition;
             this.body = new ArrayList<>();
+            this.scope = scope;
         }
 
-        public IfElseFragment(ControlType type) {
+        public IfElseFragment(ControlType type, String scope) {
             this.type = type;
             this.body = new ArrayList<>();
             this.condition = null;
+            this.scope = scope;
         }
 }

@@ -7,9 +7,9 @@ import com.graemsheppard.clang.fragments.IfElseFragment;
 import com.graemsheppard.clang.nodes.*;
 import lombok.NonNull;
 
-import javax.swing.plaf.nimbus.State;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Stack;
 
 public class Parser {
 
@@ -24,10 +24,22 @@ public class Parser {
     private int index;
 
     /**
+     * Keeps track of variable names and types
+     */
+    private final SymbolTable symbolTable;
+
+    private final Stack<String> scopes;
+
+    private int scopeCount = 0;
+
+    /**
      * @param tokens the list of tokens to parse
      */
-    public Parser(List<Token> tokens) {
+    public Parser(List<Token> tokens, SymbolTable table) {
         this.tokens = tokens;
+        this.symbolTable = table;
+        this.scopes = new Stack<>();
+        this.scopes.push("_global_");
     }
 
 
@@ -60,6 +72,7 @@ public class Parser {
         StatementNode statementNode;
         if (peekToken(0).getType() == TokenType.INT && peekToken(1).getType() == TokenType.IDENTIFIER && peekToken(2).getType() == TokenType.OPEN_PARENTHESIS) {
             String id = scanToken(1).getText();
+            symbolTable.add(id, DataType.INTEGER, currentScope(), outerScopes());
             scanToken();
             List<DeclarationStatementNode> params = new ArrayList<>();
             while(peekToken(0).getType() != TokenType.CLOSE_PARENTHESIS) {
@@ -73,9 +86,11 @@ public class Parser {
             if (scanToken().getType() != TokenType.OPEN_BRACE)
                 throw new RuntimeException("'{' expected");
             List<StatementNode> body = new ArrayList<>();
+            createScope();
             while (peekToken(0).getType() != TokenType.CLOSE_BRACE) {
                 body.add(parseStatement());
             }
+            destroyScope();
             statementNode = new FunctionDeclarationStatementNode(id, params, body);
             scanToken();
         } else if (peekToken(0).getType() == TokenType.IDENTIFIER && (peekToken(1).getType() == TokenType.ASSIGN || peekToken(1).getType() == TokenType.OPEN_BRACKET)) {
@@ -102,6 +117,7 @@ public class Parser {
             // Declaration statement, parse right side as expression
             String type = scanToken().getText();
             String id = scanToken().getText();
+            symbolTable.add(id, DataType.from(type), currentScope(), outerScopes());
             if (peekToken(0).getType() == TokenType.OPEN_BRACKET) {
                 int size = Integer.parseInt(scanToken(1).getText());
                 var dataType = DataType.from(type);
@@ -119,6 +135,7 @@ public class Parser {
                 throw new RuntimeException("Unexpected token, ';' expected");
         } else if (peekToken(0).getType() == TokenType.INT && peekToken(1).getType() == TokenType.STAR && peekToken(2).getType() == TokenType.IDENTIFIER) {
             String id = scanToken(2).getText();
+            symbolTable.add(id, DataType.INTEGER, currentScope(), outerScopes());
             if (peekToken(0).getType() == TokenType.ASSIGN) {
                 scanToken();
                 statementNode = new DeclarationStatementNode(id, parseExpression_p0(), true);
@@ -143,26 +160,29 @@ public class Parser {
             // If statement, parse inside parenthesis as expression
             scanToken(1);
             var ifElseStmt = new IfElseStatementNode();
-            var mainIfFrag = new IfElseFragment(ControlType.IF, parseExpression_p0());
+            var condition = parseExpression_p0();
+            createScope();
+            var mainIfFrag = new IfElseFragment(ControlType.IF, condition, currentScope());
             if (scanToken().getType() != TokenType.CLOSE_PARENTHESIS)
                 throw new RuntimeException("')' expected");
             if (scanToken().getType() != TokenType.OPEN_BRACE)
                 throw new RuntimeException("'{' expected");
             // Parse body of if statement as array of statements
+
             while (peekToken(0).getType() != TokenType.CLOSE_BRACE) {
                 mainIfFrag.getBody().add(parseStatement());
             }
+            destroyScope();
 
             ifElseStmt.getParts().add(mainIfFrag);
             scanToken();
 
             // Check for else if
             while(peekToken(0).getType() == TokenType.ELSE && peekToken(1).getType() == TokenType.IF && peekToken(2).getType() == TokenType.OPEN_PARENTHESIS) {
-                scanToken();
-                scanToken();
-                scanToken(); // bruh
-
-                var frag = new IfElseFragment(ControlType.IF_ELSE, parseExpression_p0());
+                scanToken(2);
+                var elseCondition = parseExpression_p0();
+                createScope();
+                var frag = new IfElseFragment(ControlType.IF_ELSE, elseCondition, currentScope());
 
                 if (scanToken().getType() != TokenType.CLOSE_PARENTHESIS)
                     throw new RuntimeException("')' expected");
@@ -172,22 +192,21 @@ public class Parser {
                 while (peekToken(0).getType() != TokenType.CLOSE_BRACE) {
                     frag.getBody().add(parseStatement());
                 }
+                destroyScope();
                 ifElseStmt.getParts().add(frag);
                 scanToken();
             }
 
             // Check for else
             if (peekToken(0).getType() == TokenType.ELSE) {
-                scanToken();
-
-                if (scanToken().getType() != TokenType.OPEN_BRACE)
+                if (scanToken(1).getType() != TokenType.OPEN_BRACE)
                     throw new RuntimeException("'{' expected");
-
-                var frag = new IfElseFragment(ControlType.ELSE);
-
+                createScope();
+                var frag = new IfElseFragment(ControlType.ELSE, currentScope());
                 while (peekToken(0).getType() != TokenType.CLOSE_BRACE) {
                     frag.getBody().add(parseStatement());
                 }
+                destroyScope();
                 ifElseStmt.getParts().add(frag);
                 scanToken();
             }
@@ -202,10 +221,11 @@ public class Parser {
                 throw new RuntimeException("')' expected");
             if (scanToken().getType() != TokenType.OPEN_BRACE)
                 throw new RuntimeException("'{' expected");
-
+            createScope();
             while (peekToken(0).getType() != TokenType.CLOSE_BRACE) {
                 body.add(parseStatement());
             }
+            destroyScope();
             scanToken();
             statementNode = new WhileStatementNode(condition, body);
         } else {
@@ -219,8 +239,9 @@ public class Parser {
     }
 
     public DeclarationStatementNode parseDeclaration() {
-        scanToken();
+        String type = scanToken().getText();
         String id = scanToken().getText();
+        symbolTable.add(id, DataType.from(type), currentScope(), outerScopes());
         if (peekToken(0).getType() == TokenType.ASSIGN) {
             scanToken();
             return new DeclarationStatementNode(id, parseExpression_p0());
@@ -306,7 +327,8 @@ public class Parser {
     public ExpressionNode parseExpression_p4() {
         ExpressionNode node;
         if (peekToken(0).getType() == TokenType.IDENTIFIER && peekToken(1).getType() == TokenType.OPEN_PARENTHESIS) {
-            FunctionCallExpressionNode functionNode = new FunctionCallExpressionNode(scanToken().getText());
+            String id = scanToken().getText();
+            FunctionCallExpressionNode functionNode = new FunctionCallExpressionNode(id, symbolTable.get(id, currentScope()).getType());
             scanToken();
             while (peekToken(0).getType() != TokenType.CLOSE_PARENTHESIS) {
                 functionNode.getParams().add(parseExpression_p0());
@@ -334,10 +356,11 @@ public class Parser {
         } else if (peekToken(0).getType() == TokenType.FLOAT_LITERAL) {
             term = new ValueExpressionNode(Float.parseFloat(scanToken().getText()));
         } else if (peekToken(0).getType() == TokenType.IDENTIFIER) {
-            term = new IdentifierExpressionNode(scanToken().getText());
+            String id = scanToken().getText();
+            term = new IdentifierExpressionNode(id, symbolTable.get(id, currentScope()).getType());
         } else if (peekToken(0).getType() == TokenType.AMP && peekToken(1).getType() == TokenType.IDENTIFIER) {
-            scanToken();
-            term = new AddressExpressionNode(new IdentifierExpressionNode(scanToken().getText()));
+            String id = scanToken(1).getText();
+            term = new AddressExpressionNode(new IdentifierExpressionNode(id, symbolTable.get(id, currentScope()).getType()));
         } else {
             throw new RuntimeException("Expected literal or identifier type");
         }
@@ -361,6 +384,20 @@ public class Parser {
         return tokens.get(index++);
     }
 
+    private String currentScope() {
+        return scopes.peek();
+    }
 
+    private String outerScopes() {
+        return String.join(",", scopes);
+    }
+
+    private void createScope() {
+        scopes.push("s_" + scopeCount++);
+    }
+
+    private void destroyScope() {
+        scopes.pop();
+    }
 
 }

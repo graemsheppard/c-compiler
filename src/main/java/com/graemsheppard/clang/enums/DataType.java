@@ -7,7 +7,10 @@ import java.util.Arrays;
 public enum DataType {
     INTEGER("int"),
     FLOAT("float"),
-    VOID("void");
+    VOID("void"),
+    CHAR("char"),
+    BOOL("bool"),
+    INFERRED("inferred");
 
     @Getter
     private final String type;

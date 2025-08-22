@@ -69,8 +69,15 @@ public class Generator {
      */
     private int whileStatementCount = 0;
 
-    public Generator (ProgramNode programRoot) {
+    /**
+     * Stores information about variables and functions
+     * Should already contain some information from being passed to the parser
+     */
+    private final SymbolTable symbolTable;
+
+    public Generator (ProgramNode programRoot, SymbolTable table) {
         root = programRoot;
+        symbolTable = table;
     }
 
     /**

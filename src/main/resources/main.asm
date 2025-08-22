@@ -32,6 +32,8 @@ if_0:
 	add 	rsp, 	8
 	jmp 	endif_0
 endif_0:
+	mov 	rax, 	0x0
+	push 	rax
 	mov 	rax, 	[rbp+16]
 	push 	rax
 	mov 	rax, 	[rbp+16]
@@ -54,6 +56,17 @@ ret_func:
 	pop 	rbp
 	ret
 end_func:
+	jmp 	end_func2
+func2:
+	push 	rbp
+	mov 	rbp, 	rsp
+	mov 	rax, 	0x1
+	push 	rax
+ret_func2:
+	mov 	rsp, 	rbp
+	pop 	rbp
+	ret
+end_func2:
 	mov 	rax, 	0x0
 	push 	rax
 	mov 	rax, 	0x5

@@ -33,9 +33,10 @@ public class Main {
         }
         var tokenizer = new Tokenizer(input);
         var tokens = tokenizer.tokenize();
-        var parser = new Parser(tokens);
+        var symbolTable = new SymbolTable();
+        var parser = new Parser(tokens, symbolTable);
         var tree = parser.parse();
-        var generator = new Generator(tree);
+        var generator = new Generator(tree, symbolTable);
         String asm = generator.generate();
         Writer fileWriter = new FileWriter("src/main/resources/main.asm", false);
         fileWriter.write(asm);

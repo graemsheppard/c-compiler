@@ -3,6 +3,15 @@ Experimental implementation of a c-like language using
 Java to build the compiler. Currently only compiles
 for MacOS running Intel x86 architecture.
 
+### Features
+
+- Variables
+- Functions
+- If/Else Statements
+- While loops
+- Pointers
+
+
 This uses recursive-descent parsing and performs slight optimization
 on redundant instructions, for example:
 ```

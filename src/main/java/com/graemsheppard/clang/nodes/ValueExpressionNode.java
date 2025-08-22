@@ -9,9 +9,6 @@ public class ValueExpressionNode extends ExpressionNode {
     @Getter
     private String value;
 
-    @Getter
-    private DataType type;
-
     public ValueExpressionNode() {}
 
     public ValueExpressionNode(String val) {
